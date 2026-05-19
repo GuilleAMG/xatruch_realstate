@@ -1,0 +1,12 @@
+
+allprojects {
+    afterEvaluate {
+        if (project.hasProperty('android')) {
+            println "Project: ${project.name}"
+            println "  compileSdkVersion: ${project.android.compileSdkVersion}"
+            if (project.android.hasProperty('buildToolsVersion')) {
+                println "  buildToolsVersion: ${project.android.buildToolsVersion}"
+            }
+        }
+    }
+}

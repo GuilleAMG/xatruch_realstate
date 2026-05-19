@@ -1,0 +1,26 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # This makes the compiler much stricter about types
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  
+  # Prevents the analyzer from checking files you don't control
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/firebase_options.dart"
+
+linter:
+  rules:
+    # Highly recommended additions
+    - avoid_print # Use a logger instead of print() for production apps
+    - prefer_final_locals # Makes code more predictable
+    - prefer_const_constructors_in_immutables
+    - sort_constructors_first # Keeps classes organized
+    - unawaited_futures # Catches cases where you forgot to 'await' an async call
+    - always_declare_return_types # Prevents accidental dynamic returns
+    - cancel_subscriptions # Reminds you to close Streams (prevents memory leaks)
+    - close_sinks # Reminds you to close Controllers
