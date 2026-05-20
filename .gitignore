@@ -46,3 +46,37 @@ app.*.map.json
 
 windows/out/
 android/build/
+
+# Firebase sensitive files
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+
+# VS Code
+.vscode/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# iOS/macOS
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Flutter/Generated.xcconfig
+macos/Flutter/flutter_export_environment.sh
+**/Pods/
+**/Podfile.lock
+
+# Android
+android/local.properties
+android/key.properties
+*.keystore
+*.jks
+
+# Debug info from obfuscation
+/debug-info/
+
+# Flutter generated
+lib/generated_plugin_registrant.dart
