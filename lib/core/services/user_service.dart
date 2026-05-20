@@ -15,24 +15,27 @@ class UserService {
 
   /// Verifica la conexión a Firestore intentando obtener metadatos de un documento.
   Future<bool> checkConnection() async {
-    try {
-      await _db
-          .collection('usuarios')
-          .limit(1)
-          .get()
-          .timeout(const Duration(seconds: 5));
-      return true;
-    } catch (e) {
-      debugPrint('Firestore Connection Error: $e');
-      return false;
-    }
+  try {
+    final user = _auth.currentUser;
+    if (user == null) return true;
+
+    await _db
+        .collection('usuarios')
+        .doc(user.uid)
+        .get()
+        .timeout(const Duration(seconds: 5));
+    return true;
+  } catch (e) {
+    debugPrint('Firestore Connection Error: $e');
+    return false;
   }
+}
 
   // ─────────────────────────────────────────────
   //  Usuarios (Users) — CRUD
   // ─────────────────────────────────────────────
 
-  Future<List<Map<String, dynamic>>> getUsuarios() async {
+  /* Future<List<Map<String, dynamic>>> getUsuarios() async {
     try {
       final List<Map<String, dynamic>> usuarios = [];
       final QuerySnapshot usuariosQuery = await _db
@@ -48,7 +51,7 @@ class UserService {
       return [];
     }
   }
-
+  */
   /// Obtiene un documento de usuario individual por ID.
   Future<Map<String, dynamic>?> getUsuarioById(String id) async {
     try {
