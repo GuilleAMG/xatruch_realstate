@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/notification_service.dart';
 import 'package:xatruch_realstate/core/services/payment_service.dart';
@@ -35,6 +36,16 @@ void main() async {
 
   // Inicialización de servicios core
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+ await FirebaseAppCheck.instance.activate(
+  providerAndroid: kDebugMode
+      ? AndroidDebugProvider()
+      : AndroidPlayIntegrityProvider(),
+  providerApple: kDebugMode
+      ? AppleDebugProvider()
+      : AppleDeviceCheckProvider(),
+  providerWeb: ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
+);
 
   // Configurar Crashlytics para captura global de errores solo en plataformas soportadas
   if (!kIsWeb &&
