@@ -29,7 +29,6 @@ class FavoriteService {
     } else {
       await favRef.set({'addedAt': DateTime.now().toIso8601String()});
 
-      // Enviar notificación al vendedor
       try {
         final propertyDoc = await _db
             .collection('propiedades')
@@ -70,29 +69,29 @@ class FavoriteService {
 
   /// Retorna un stream en tiempo real de los IDs de propiedades favoritas del usuario actual.
   Stream<Set<String>> getFavoriteIds() {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value({});
-
-    return _db
-        .collection('usuarios')
-        .doc(user.uid)
-        .collection('favoritos')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+    return _auth.authStateChanges().asyncExpand((User? user) {
+      if (user == null) return Stream.value(<String>{});
+      return _db
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('favoritos')
+          .snapshots()
+          .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet());
+    });
   }
 
   /// Retorna un stream que indica si una propiedad específica es favorita del usuario actual.
   Stream<bool> isFavorite(String propertyId) {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value(false);
-
-    return _db
-        .collection('usuarios')
-        .doc(user.uid)
-        .collection('favoritos')
-        .doc(propertyId)
-        .snapshots()
-        .map((snapshot) => snapshot.exists);
+    return _auth.authStateChanges().asyncExpand((User? user) {
+      if (user == null) return Stream.value(false);
+      return _db
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('favoritos')
+          .doc(propertyId)
+          .snapshots()
+          .map((snapshot) => snapshot.exists);
+    });
   }
 }
 

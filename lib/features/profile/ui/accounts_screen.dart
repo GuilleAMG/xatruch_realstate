@@ -48,12 +48,14 @@ class _AccountScreenState extends State<AccountScreen> {
 
   String _getUserName() {
     final nombre = _userData?['nombre'];
-    if (nombre != null && nombre.toString().trim().isNotEmpty)
+    if (nombre != null && nombre.toString().trim().isNotEmpty) {
       return nombre.toString();
+    }
 
     final user = authService.currentUser;
-    if (user?.displayName != null && user!.displayName!.isNotEmpty)
+    if (user?.displayName != null && user!.displayName!.isNotEmpty) {
       return user.displayName!;
+    }
     if (user?.email != null) return user!.email!.split('@').first;
 
     return 'Usuario';

@@ -30,16 +30,16 @@ class FollowService {
 
   /// Retorna un stream que indica si el usuario actual sigue a [targetUserId].
   Stream<bool> isFollowing(String targetUserId) {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value(false);
-
-    return _db
-        .collection('usuarios')
-        .doc(user.uid)
-        .collection('siguiendo')
-        .doc(targetUserId)
-        .snapshots()
-        .map((snapshot) => snapshot.exists);
+    return _auth.authStateChanges().asyncExpand((User? user) {
+      if (user == null) return Stream.value(false);
+      return _db
+          .collection('usuarios')
+          .doc(user.uid)
+          .collection('siguiendo')
+          .doc(targetUserId)
+          .snapshots()
+          .map((snapshot) => snapshot.exists);
+    });
   }
 
   /// Obtiene una lista de IDs de seguidores para un usuario específico.
