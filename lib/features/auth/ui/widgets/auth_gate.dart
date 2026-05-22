@@ -1,39 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-/// Un widget que escucha un stream de estado de autenticación y alterna
-/// entre los constructores [signedInBuilder] y [signedOutBuilder].
 class AuthGate extends StatelessWidget {
   const AuthGate({
     super.key,
-    required this.signedInStream,
+    this.authStateStream,
     required this.signedInBuilder,
     required this.signedOutBuilder,
   });
 
-  /// Stream que emite true si el usuario está autenticado, false en caso contrario.
-  final Stream<bool> signedInStream;
+  /// Inyectable para tests. En producción se usa FirebaseAuth.instance.
+  final Stream<User?>? authStateStream;
 
-  /// Constructor para el estado autenticado.
   final WidgetBuilder signedInBuilder;
-
-  /// Constructor para el estado no autenticado.
   final WidgetBuilder signedOutBuilder;
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<bool>(
-      stream: signedInStream,
+    return StreamBuilder<User?>(
+      stream: authStateStream ?? FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Mientras espera el estado inicial, muestra un indicador de carga.
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final bool isSignedIn = snapshot.data ?? false;
+        final bool isSignedIn = snapshot.data != null;
 
         if (isSignedIn) {
           return signedInBuilder(context);

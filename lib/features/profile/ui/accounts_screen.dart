@@ -1,7 +1,6 @@
 // Pantalla de cuenta: muestra el perfil del usuario con opciones
 // de configuracion, suscripcion, historial y soporte.
 import 'package:flutter/material.dart';
-import 'package:xatruch_realstate/features/auth/ui/login_screen.dart';
 import 'package:xatruch_realstate/features/properties/ui/favorites_screen.dart';
 import 'package:xatruch_realstate/features/profile/ui/settings_screen.dart';
 import 'package:xatruch_realstate/features/profile/ui/profiles_screen.dart';
@@ -49,12 +48,14 @@ class _AccountScreenState extends State<AccountScreen> {
 
   String _getUserName() {
     final nombre = _userData?['nombre'];
-    if (nombre != null && nombre.toString().trim().isNotEmpty) return nombre.toString();
+    if (nombre != null && nombre.toString().trim().isNotEmpty)
+      return nombre.toString();
 
     final user = authService.currentUser;
-    if (user?.displayName != null && user!.displayName!.isNotEmpty) return user.displayName!;
+    if (user?.displayName != null && user!.displayName!.isNotEmpty)
+      return user.displayName!;
     if (user?.email != null) return user!.email!.split('@').first;
-    
+
     return 'Usuario';
   }
 
@@ -72,7 +73,9 @@ class _AccountScreenState extends State<AccountScreen> {
             onPressed: () async {
               await Navigator.push<void>(
                 context,
-                MaterialPageRoute<void>(builder: (context) => const SettingsScreen()),
+                MaterialPageRoute<void>(
+                  builder: (context) => const SettingsScreen(),
+                ),
               );
             },
           ),
@@ -97,7 +100,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const ProfileScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const ProfileScreen(),
+                        ),
                       ).then((_) => _loadUserData());
                     },
                   ),
@@ -107,7 +112,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const SubscriptionScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const SubscriptionScreen(),
+                        ),
                       ).then((_) => _loadUserData());
                     },
                   ),
@@ -117,7 +124,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const FavoritesScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const FavoritesScreen(),
+                        ),
                       );
                     },
                   ),
@@ -127,7 +136,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const SalesHistoryScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const SalesHistoryScreen(),
+                        ),
                       );
                     },
                   ),
@@ -137,7 +148,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const NotificationsScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const NotificationsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -147,7 +160,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const PrivacyScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const PrivacyScreen(),
+                        ),
                       );
                     },
                   ),
@@ -157,7 +172,9 @@ class _AccountScreenState extends State<AccountScreen> {
                     onTap: () async {
                       await Navigator.push<void>(
                         context,
-                        MaterialPageRoute<void>(builder: (context) => const SupportScreen()),
+                        MaterialPageRoute<void>(
+                          builder: (context) => const SupportScreen(),
+                        ),
                       );
                     },
                   ),
@@ -171,12 +188,6 @@ class _AccountScreenState extends State<AccountScreen> {
                       child: TextButton(
                         onPressed: () async {
                           await authService.signOut();
-                          if (context.mounted) {
-                            await Navigator.of(context).pushAndRemoveUntil<void>(
-                              MaterialPageRoute<void>(builder: (context) => const LoginScreen()),
-                              (route) => false,
-                            );
-                          }
                         },
                         style: TextButton.styleFrom(
                           foregroundColor: colorScheme.error,

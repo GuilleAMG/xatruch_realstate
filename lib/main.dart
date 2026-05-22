@@ -141,7 +141,6 @@ class MainApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       home: AuthGate(
-        signedInStream: authService.isSignedIn,
         signedInBuilder: (_) => const MainWrapper(),
         signedOutBuilder: (_) => const LoginScreen(),
       ),

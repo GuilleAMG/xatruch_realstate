@@ -1,5 +1,3 @@
-// Servicio de pagos: integra RevenueCat para compras in-app, sincronización
-// de suscripciones y restauración de compras previas.
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,13 +12,13 @@ class PaymentService {
   static const String _googleApiKey = 'test_ATKjprKakewmiiiebmklWzOuIJH';
   bool _isConfigured = false;
 
+  // Guard flag: prevents the customerInfo listener from acting
+  // during login/logout transitions.
+  bool _isChangingSession = false;
+
   Future<void> init() async {
-    if (kIsWeb) {
-      return; // Las compras In-App nativas solo funcionan en iOS/Android
-    }
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return; // Skip on desktop as RevenueCat isn't officially supported natively here
-    }
+    if (kIsWeb) return;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) return;
 
     await Purchases.setLogLevel(LogLevel.debug);
 
@@ -36,7 +34,6 @@ class PaymentService {
       _isConfigured = true;
       _listenToCustomerInfoChanges();
 
-      // Intentar loguear el usuario si ya tenemos sesión de Firebase
       final user = authService.currentUser;
       if (user != null) {
         await bindToAuthUser(user);
@@ -57,16 +54,22 @@ class PaymentService {
 
   Future<void> bindToSessionUser(SessionUser user) async {
     if (kIsWeb || !_isConfigured) return;
-    await Purchases.logIn(user.uid);
 
-    if (user.email != null && user.email!.isNotEmpty) {
-      await Purchases.setEmail(user.email!);
-    }
-    if (user.displayName != null && user.displayName!.isNotEmpty) {
-      await Purchases.setDisplayName(user.displayName!);
-    }
-    if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
-      await Purchases.setPhoneNumber(user.phoneNumber!);
+    _isChangingSession = true;
+    try {
+      await Purchases.logIn(user.uid);
+
+      if (user.email != null && user.email!.isNotEmpty) {
+        await Purchases.setEmail(user.email!);
+      }
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        await Purchases.setDisplayName(user.displayName!);
+      }
+      if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+        await Purchases.setPhoneNumber(user.phoneNumber!);
+      }
+    } finally {
+      _isChangingSession = false;
     }
   }
 
@@ -74,12 +77,16 @@ class PaymentService {
     if (kIsWeb || !_isConfigured) return;
     try {
       if (await Purchases.isAnonymous) {
-        debugPrint(
-          'PaymentService: User is already anonymous, skipping logOut.',
-        );
+        debugPrint('PaymentService: User is already anonymous, skipping logOut.');
         return;
       }
-      await Purchases.logOut();
+
+      _isChangingSession = true;
+      try {
+        await Purchases.logOut();
+      } finally {
+        _isChangingSession = false;
+      }
     } catch (e) {
       debugPrint('PaymentService: Error during RevenueCat logOut: $e');
     }
@@ -87,6 +94,11 @@ class PaymentService {
 
   void _listenToCustomerInfoChanges() {
     Purchases.addCustomerInfoUpdateListener((customerInfo) async {
+      // Ignore listener events fired during login/logout transitions.
+      if (_isChangingSession) {
+        debugPrint('PaymentService: Skipping customerInfo update during session change.');
+        return;
+      }
       await syncUserTier(customerInfo);
     });
   }
@@ -106,16 +118,9 @@ class PaymentService {
     if (user == null) return;
 
     final activeEntitlements = customerInfo.entitlements.active;
+    if (activeEntitlements.isEmpty) return;
 
-    // Si no hay suscripciones activas en RevenueCat, no sobrescribir el tier local.
-    // Esto permite probar con los tiers manuales sin que RevenueCat los resetee.
-    if (activeEntitlements.isEmpty) {
-      return;
-    }
-
-    // Tier interno calculado según los entitlements activos de RevenueCat
     String newTier = 'Estudiante';
-
     if (activeEntitlements.containsKey('company')) {
       newTier = 'Empresario';
     } else if (activeEntitlements.containsKey('investor')) {
@@ -129,7 +134,6 @@ class PaymentService {
     final data = await subscriptionService.getSubscriptionInfo(user.uid);
     final currentTier = data['tier'];
 
-    // En produccion se puede manejar downgrade si expiro, aquí solo actualizamos si hay diferencia.
     if (currentTier != newTier) {
       await subscriptionService.updateUserTier(user.uid, newTier);
     }
@@ -164,8 +168,6 @@ class PaymentService {
     }
   }
 
-  /// Restaurar manualmente compras anteriores (ej. si el usuario cambió de teléfono).
-  /// Solo debe activarse por interacción directa del usuario, como un toque en un botón.
   Future<bool> restorePurchases() async {
     if (kIsWeb || !_isConfigured) return false;
     try {

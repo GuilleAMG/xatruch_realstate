@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost", "http://localhost:*", "https://xatruch-realstate-68f82.web.app", "https://xatruch-realstate-68f82.firebaseapp.com"],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "User-Agent"]
+  }
+]

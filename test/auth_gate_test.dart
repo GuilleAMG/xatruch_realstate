@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:xatruch_realstate/features/auth/ui/widgets/auth_gate.dart';
+
+class MockUser extends Mock implements User {}
 
 void main() {
   testWidgets('AuthGate shows loading indicator while waiting for auth state', (
@@ -9,7 +13,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          signedInStream: const Stream<bool>.empty(),
+          authStateStream: const Stream<User?>.empty(),
           signedInBuilder: (_) => const Text('SIGNED_IN'),
           signedOutBuilder: (_) => const Text('SIGNED_OUT'),
         ),
@@ -25,7 +29,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          signedInStream: Stream<bool>.value(false),
+          authStateStream: Stream<User?>.value(null),
           signedInBuilder: (_) => const Text('SIGNED_IN'),
           signedOutBuilder: (_) => const Text('SIGNED_OUT'),
         ),
@@ -43,7 +47,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: AuthGate(
-          signedInStream: Stream<bool>.value(true),
+          authStateStream: Stream<User?>.value(MockUser()),
           signedInBuilder: (_) => const Text('SIGNED_IN'),
           signedOutBuilder: (_) => const Text('SIGNED_OUT'),
         ),
