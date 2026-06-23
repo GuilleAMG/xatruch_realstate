@@ -53,16 +53,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final userCredential = await authService.registerUser(email, password);
         final String uid = userCredential.user!.uid;
 
-        final Map<String, dynamic> userData = {
-          'nombre': _nameController.text.trim(),
-          'email': email,
-          'dni': _dniController.text.trim(),
-          'telefono': _phoneController.text.trim(),
-          'uid': uid,
-          'fecha_registro': DateTime.now(),
-        };
-
-        await userService.addUserProfile(uid, userData);
+        await userService.addUserProfile(
+          uid: uid,
+          nombre: _nameController.text.trim(),
+          email: email,
+          telefono: _phoneController.text.trim(),
+          dni: _dniController.text.trim(),
+        );
 
         if (mounted) {
           setState(() => _isLoading = false);
@@ -74,7 +71,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
           await Navigator.pushReplacement<void, void>(
             context,
-            MaterialPageRoute<void>(builder: (context) => const LoginScreen()),
+            MaterialPageRoute<void>(
+              builder: (context) => const LoginScreen(),
+            ),
           );
         }
       } on FirebaseAuthException catch (e) {
@@ -89,15 +88,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
               errorMessage = 'El formato del correo electrónico no es válido.';
               break;
             case 'weak-password':
-              errorMessage = 'La contraseña es muy débil. Use al menos 6 caracteres.';
+              errorMessage =
+                  'La contraseña es muy débil. Use al menos 6 caracteres.';
               break;
             case 'operation-not-allowed':
-              errorMessage = 'El registro con correo y contraseña no está habilitado.';
+              errorMessage =
+                  'El registro con correo y contraseña no está habilitado.';
               break;
             default:
               errorMessage = 'Error al registrarse: ${e.message}';
           }
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
@@ -186,10 +186,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                       color: colorScheme.onSurfaceVariant,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   validator: Validators.validatePassword,
                 ),
@@ -202,12 +205,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscureConfirmPassword,
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      _obscureConfirmPassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                       color: colorScheme.onSurfaceVariant,
                     ),
-                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
                   ),
-                  validator: (value) => Validators.validateConfirmPassword(value, _passwordController.text),
+                  validator: (value) => Validators.validateConfirmPassword(
+                    value,
+                    _passwordController.text,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -219,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 AuthFooter(
-                  message: "¿Ya tienes una cuenta? ",
+                  message: '¿Ya tienes una cuenta? ',
                   actionText: 'Inicia Sesión',
                   onTap: () => Navigator.pop(context),
                 ),

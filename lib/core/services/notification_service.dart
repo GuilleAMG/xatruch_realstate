@@ -1,21 +1,29 @@
 // Servicio de notificaciones push: inicialización de FCM, permisos,
 // manejo de mensajes en primer plano/segundo plano y enrutamiento por notificación.
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:xatruch_realstate/core/services/user_service.dart';
+import 'package:xatruch_realstate/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   /// Se invoca cuando el usuario toca una notificación (segundo plano/terminada/reanudada).
   void Function(RemoteMessage message)? onNotificationTap;
 
   Future<void> initialize() async {
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
-      debugPrint('Push notifications are not configured for desktop platforms yet. Skipping initialization.');
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
+      debugPrint(
+          'Push notifications are not configured for desktop platforms yet. Skipping initialization.');
       return;
     }
 
@@ -39,12 +47,12 @@ class NotificationService {
 
     // 3. Crear canal de notificaciones Android (necesario para notificaciones emergentes en API 26+)
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'high_importance_channel', // id
-      'High Importance Notifications', // title
+      'high_importance_channel',
+      'High Importance Notifications',
       description: 'Este canal se usa para notificaciones importantes.',
       importance: Importance.max,
     );
-    
+
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -65,7 +73,8 @@ class NotificationService {
       // Verificar preferencia del usuario antes de mostrar notificación local
       final enabled = await isNotificationsEnabled();
       if (!enabled) {
-        debugPrint('Notifications disabled for user, skipping foreground notification');
+        debugPrint(
+            'Notifications disabled for user, skipping foreground notification');
         return;
       }
 
@@ -107,8 +116,11 @@ class NotificationService {
   }
 
   Future<bool> requestPermissions() async {
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
-      return false; // Skip on desktop
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
+      return false;
     }
     try {
       // 1. Verificar/Solicitar permiso de plataforma (Android/iOS)
@@ -120,13 +132,13 @@ class NotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         debugPrint('User granted notification permission');
-        
+
         // 2. Solicitar permiso explícito de POST_NOTIFICATIONS para Android 13+
         if (defaultTargetPlatform == TargetPlatform.android) {
           final status = await Permission.notification.request();
           return status.isGranted;
         }
-        
+
         return true;
       } else {
         debugPrint('User declined or has not accepted notification permission');
@@ -139,7 +151,10 @@ class NotificationService {
   }
 
   Future<bool> isPermissionGranted() async {
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
       return false;
     }
     final settings = await _fcm.getNotificationSettings();
@@ -147,7 +162,10 @@ class NotificationService {
   }
 
   Future<String?> getToken() async {
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
       return null;
     }
     try {
@@ -159,7 +177,10 @@ class NotificationService {
   }
 
   Future<void> deleteToken() async {
-    if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS)) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
       return;
     }
     try {
@@ -171,8 +192,10 @@ class NotificationService {
 
   /// Verifica si las notificaciones están habilitadas para el usuario actual.
   Future<bool> isNotificationsEnabled() async {
-    final user = await userService.getUsuarioById(FirebaseAuth.instance.currentUser?.uid ?? '');
-    return (user?['notificationsEnabled'] as bool?) ?? true; // Por defecto true si no está configurado
+    final user = await userService.getUsuarioById(
+        FirebaseAuth.instance.currentUser?.uid ?? '');
+    return (user?['notificationsEnabled'] as bool?) ??
+        true; // Por defecto true si no está configurado
   }
 
   /// Maneja el enrutamiento al tocar una notificación según los datos del mensaje.
@@ -188,7 +211,9 @@ class NotificationService {
       targetIndex = 1;
     } else if (route == 'account' || route == 'perfil' || model == 'account') {
       targetIndex = 2;
-    } else if (route == 'home' || route == 'properties' || model == 'property') {
+    } else if (route == 'home' ||
+        route == 'properties' ||
+        model == 'property') {
       targetIndex = 0;
     } else {
       debugPrint('Unknown notification route: $route, defaulting to home');
@@ -203,24 +228,34 @@ class NotificationService {
   }
 }
 
-// Manejador de mensajes en segundo plano a nivel superior
+// Manejador de mensajes en segundo plano a nivel superior.
+// Se ejecuta en un isolate separado — Firebase debe inicializarse aquí también.
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Esto se ejecuta en un isolate. Si necesitas usar APIs de Firebase aquí,
-  // llama a Firebase.initializeApp() primero.
-  debugPrint("Handling a background message: ${message.messageId}");
+  // ✅ Guard: el isolate de background no comparte estado con el isolate principal
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
+  debugPrint('Handling a background message: ${message.messageId}');
 
   try {
-    // Si hay contenido de notificación, mostrar notificación local desde segundo plano
     if (message.notification != null) {
-      final FlutterLocalNotificationsPlugin backgroundNotifications = FlutterLocalNotificationsPlugin();
+      final FlutterLocalNotificationsPlugin backgroundNotifications =
+          FlutterLocalNotificationsPlugin();
 
-      const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
+      const AndroidInitializationSettings androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const DarwinInitializationSettings iosSettings =
+          DarwinInitializationSettings();
 
-      await backgroundNotifications.initialize(settings: InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      ));
+      await backgroundNotifications.initialize(
+        settings: const InitializationSettings(
+          android: androidSettings,
+          iOS: iosSettings,
+        ),
+      );
 
       final AndroidNotification? android = message.notification?.android;
       if (android != null) {
@@ -229,7 +264,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
           id: notification.hashCode,
           title: notification.title,
           body: notification.body,
-          notificationDetails: NotificationDetails(
+          notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(
               'high_importance_channel',
               'High Importance Notifications',
@@ -238,7 +273,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
               priority: Priority.high,
               icon: '@mipmap/ic_launcher',
             ),
-            iOS: const DarwinNotificationDetails(),
+            iOS: DarwinNotificationDetails(),
           ),
         );
       }

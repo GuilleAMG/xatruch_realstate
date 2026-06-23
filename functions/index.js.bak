@@ -1,0 +1,251 @@
+/**
+ * functions/index.js
+ *
+ * Firebase Cloud Functions for Xatruch Real Estate.
+ *
+ * Function 1: revenueCatWebhook
+ *   Receives RevenueCat webhook events and syncs the user's
+ *   subscription status (isPremium, tier, premiumSince) into
+ *   their Firestore usuarios document.
+ *
+ *   Setup steps:
+ *   1. Deploy: firebase deploy --only functions
+ *   2. Copy the deployed HTTPS URL from the Firebase Console
+ *   3. In RevenueCat Dashboard → Project → Integrations → Webhooks
+ *      → Add Endpoint → paste the URL
+ *   4. Set the Authorization header secret (see REVENUECAT_WEBHOOK_SECRET below)
+ *   5. Enable all event types (or at minimum the ones listed in HANDLED_EVENTS)
+ *
+ * Function 2: onUserDeleted
+ *   Cleans up the Firestore document when a Firebase Auth user is deleted.
+ */
+
+const { onRequest } = require('firebase-functions/v2/https');
+const { onCall } = require('firebase-functions/v2/https');
+const { auth } = require('firebase-functions/v2');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+
+initializeApp();
+
+const db = getFirestore();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Set this in Firebase environment config:
+//   firebase functions:secrets:set REVENUECAT_WEBHOOK_SECRET
+// Then reference it as process.env.REVENUECAT_WEBHOOK_SECRET
+//
+// In RevenueCat Dashboard → Webhooks → Authorization header value
+// must match this secret exactly.
+const WEBHOOK_SECRET = process.env.REVENUECAT_WEBHOOK_SECRET ?? '';
+
+// RevenueCat event types that should set isPremium = true
+const PREMIUM_EVENTS = new Set([
+  'INITIAL_PURCHASE',
+  'RENEWAL',
+  'PRODUCT_CHANGE',
+  'UNCANCELLATION',       // User re-enabled a cancelled subscription
+  'NON_RENEWING_PURCHASE',
+]);
+
+// RevenueCat event types that should set isPremium = false
+const FREE_EVENTS = new Set([
+  'CANCELLATION',
+  'EXPIRATION',
+  'BILLING_ISSUE',
+  'SUBSCRIPTION_PAUSED',
+]);
+
+// All handled events (union of the above)
+const HANDLED_EVENTS = new Set([...PREMIUM_EVENTS, ...FREE_EVENTS]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENTITLEMENT → TIER MAPPING
+// Must match subscription_service.dart and payment_service.dart
+// Priority: yearly > six_month > three_month > monthly > free
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolves a tier string from a RevenueCat product identifier.
+ * RevenueCat sends the product_id in the event payload.
+ *
+ * Adjust the strings below to match your actual RevenueCat product IDs.
+ */
+function resolveTierFromProductId(productId) {
+  if (!productId) return 'free';
+  const id = productId.toLowerCase();
+  if (id.includes('yearly') || id.includes('annual')) return 'yearly';
+  if (id.includes('six') || id.includes('6_month')) return 'six_month';
+  if (id.includes('three') || id.includes('3_month')) return 'three_month';
+  if (id.includes('monthly') || id.includes('month')) return 'monthly';
+  return 'monthly'; // fallback for any unrecognized paid product
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNCTION 1: revenueCatWebhook
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.revenueCatWebhook = onRequest(
+  {
+    region: 'us-central1',
+    // Allow unauthenticated requests — RevenueCat calls this endpoint.
+    // We authenticate via the Authorization header secret instead.
+    invoker: 'public',
+  },
+  async (req, res) => {
+    // ── Only accept POST ───────────────────────────────────────────────────
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method Not Allowed');
+    }
+
+    // ── Validate Authorization header ──────────────────────────────────────
+    // RevenueCat sends: Authorization: <your-secret>
+    if (WEBHOOK_SECRET) {
+      const authHeader = req.headers['authorization'] ?? '';
+      if (authHeader !== WEBHOOK_SECRET) {
+        console.warn('revenueCatWebhook: Unauthorized request — bad secret');
+        return res.status(401).send('Unauthorized');
+      }
+    } else {
+      console.warn('revenueCatWebhook: REVENUECAT_WEBHOOK_SECRET not set. ' +
+        'Skipping auth check — set the secret before going to production!');
+    }
+
+    // ── Parse payload ──────────────────────────────────────────────────────
+    const event = req.body?.event;
+    if (!event) {
+      console.warn('revenueCatWebhook: Missing event in payload');
+      return res.status(400).send('Bad Request: missing event');
+    }
+
+    const {
+      type: eventType,
+      app_user_id: appUserId,   // This is the Firebase UID we passed to RC
+      product_id: productId,
+      expiration_at_ms: expirationAtMs,
+    } = event;
+
+    console.log(`revenueCatWebhook: event=${eventType} uid=${appUserId}`);
+
+    // ── Ignore unhandled event types ───────────────────────────────────────
+    if (!HANDLED_EVENTS.has(eventType)) {
+      console.log(`revenueCatWebhook: Ignoring event type: ${eventType}`);
+      return res.status(200).send('OK');
+    }
+
+    // ── Validate uid ───────────────────────────────────────────────────────
+    if (!appUserId || appUserId.startsWith('$RCAnonymousID')) {
+      // Anonymous RevenueCat user — nothing to sync
+      console.log('revenueCatWebhook: Skipping anonymous user');
+      return res.status(200).send('OK');
+    }
+
+    // ── Determine new tier and isPremium ───────────────────────────────────
+    const isPremiumEvent = PREMIUM_EVENTS.has(eventType);
+    const newTier = isPremiumEvent ? resolveTierFromProductId(productId) : 'free';
+    const isPremium = isPremiumEvent;
+
+    // ── Build Firestore update ─────────────────────────────────────────────
+    const userRef = db.collection('usuarios').doc(appUserId);
+
+    try {
+      const snapshot = await userRef.get();
+
+      if (!snapshot.exists) {
+        console.warn(`revenueCatWebhook: User document not found for uid=${appUserId}`);
+        // Still return 200 so RevenueCat doesn't retry indefinitely.
+        return res.status(200).send('OK');
+      }
+
+      const currentData = snapshot.data();
+      const wasAlreadyPremium = currentData.isPremium === true;
+
+      const updates = {
+        tier: newTier,
+        isPremium: isPremium,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      if (isPremium && !wasAlreadyPremium) {
+        // First time going premium — stamp the date.
+        updates.premiumSince = FieldValue.serverTimestamp();
+      }
+
+      if (!isPremium) {
+        // Subscription ended — clear premiumSince.
+        updates.premiumSince = null;
+      }
+
+      // Optionally store when the subscription expires.
+      if (expirationAtMs) {
+        updates.premiumExpiresAt = new Date(expirationAtMs);
+      }
+
+      await userRef.update(updates);
+
+      console.log(
+        `revenueCatWebhook: Updated uid=${appUserId} ` +
+        `tier=${newTier} isPremium=${isPremium}`
+      );
+
+      return res.status(200).send('OK');
+    } catch (error) {
+      console.error('revenueCatWebhook: Firestore update failed', error);
+      // Return 500 so RevenueCat retries the webhook.
+      return res.status(500).send('Internal Server Error');
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FUNCTION 2: onUserDeleted
+// Cleans up Firestore when a Firebase Auth account is deleted.
+// ─────────────────────────────────────────────────────────────────────────────
+
+exports.onUserDeleted = auth.user().onDelete(async (user) => {
+  const uid = user.uid;
+  console.log(`onUserDeleted: Cleaning up Firestore for uid=${uid}`);
+
+  try {
+    // Delete the main user document.
+    await db.collection('usuarios').doc(uid).delete();
+
+    // Note: subcollections (favoritos, siguiendo, notificaciones) are NOT
+    // automatically deleted by Firestore when the parent document is deleted.
+    // For a production app, use the Firebase Extension
+    // "Delete User Data" to handle subcollection cleanup automatically:
+    // https://extensions.dev/extensions/firebase/delete-user-data
+    //
+    // Or delete them manually here if you prefer:
+    // await deleteSubcollection(uid, 'favoritos');
+    // await deleteSubcollection(uid, 'siguiendo');
+    // await deleteSubcollection(uid, 'notificaciones');
+
+    console.log(`onUserDeleted: Successfully deleted document for uid=${uid}`);
+  } catch (error) {
+    console.error(`onUserDeleted: Failed to delete document for uid=${uid}`, error);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: delete a subcollection in batches (optional, see onUserDeleted note)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function deleteSubcollection(uid, subcollection) {
+  const ref = db.collection('usuarios').doc(uid).collection(subcollection);
+  const snapshot = await ref.limit(100).get();
+  if (snapshot.empty) return;
+
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+
+  // Recurse if there are more documents.
+  if (snapshot.size === 100) {
+    await deleteSubcollection(uid, subcollection);
+  }
+}

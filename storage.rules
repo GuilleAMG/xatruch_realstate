@@ -1,27 +1,173 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /propiedades/{sellerId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.uid == sellerId
-        && request.resource.size < 10 * 1024 * 1024
-        && (request.resource.contentType.matches('image/.*')
-            || request.resource.contentType.matches('video/.*'));
+
+    // ─────────────────────────────────────────────
+    // HELPER FUNCTIONS
+    // ─────────────────────────────────────────────
+
+    // Is the request from a signed-in user?
+    function isAuth() {
+      return request.auth != null;
     }
+
+    // Is the requesting user the resource owner?
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // Is the requesting user an admin?
+    // Reads the isAdmin flag from the usuarios Firestore document.
+    function isAdmin() {
+      return isAuth() &&
+        firestore.get(
+          /databases/(default)/documents/usuarios/$(request.auth.uid)
+        ).data.isAdmin == true;
+    }
+
+    // Is the requesting user a premium (seller) user?
+    // Reads the isPremium flag from the usuarios Firestore document.
+    function isPremium() {
+      return isAuth() &&
+        firestore.get(
+          /databases/(default)/documents/usuarios/$(request.auth.uid)
+        ).data.isPremium == true;
+    }
+
+    // Can the requesting user publish listings?
+    // True if they have isPremium=true OR have a paid tier (not 'free').
+    // This handles cases where tier is set but isPremium sync is delayed.
+    function canPublishListing() {
+      let userData = firestore.get(
+        /databases/(default)/documents/usuarios/$(request.auth.uid)
+      ).data;
+      let tier = userData.get('tier', 'free');
+      return isAuth() && (userData.get('isPremium', false) == true || tier != 'free');
+    }
+
+    // Is the uploaded file an image?
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // Is the uploaded file an image or video?
+    function isImageOrVideo() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('video/.*');
+    }
+
+    // Is the file within a given size limit (in bytes)?
+    function withinSize(maxBytes) {
+      return request.resource.size < maxBytes;
+    }
+
+
+    // ─────────────────────────────────────────────
+    // USUARIOS — Profile images
+    // Path: /usuarios/{userId}/profile.jpg
+    //        /usuarios/{userId}/...
+    //
+    // Read:   any authenticated user (public profile picture)
+    // Write:  only the owner, images only, max 2 MB
+    // Delete: owner or admin
+    // ─────────────────────────────────────────────
     match /usuarios/{userId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-        && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+      allow read: if isAuth();
+
+      allow create, update: if isOwner(userId)
+        && isImage()
+        && withinSize(2 * 1024 * 1024);  // 2 MB
+
+      allow delete: if isOwner(userId) || isAdmin();
     }
+
+
+    // ─────────────────────────────────────────────
+    // PROPIEDADES — Listing images and videos
+    // Path: /propiedades/{sellerId}/{allPaths=**}
+    //
+    // Read:   any authenticated user
+    // Write:  only the seller (with paid tier), images/videos, max 10 MB
+    // Delete: the seller who owns the path, or admin
+    // ─────────────────────────────────────────────
+    match /propiedades/{sellerId}/{allPaths=**} {
+      allow read: if isAuth();
+
+      allow create, update: if isOwner(sellerId)
+        && canPublishListing()
+        && isImageOrVideo()
+        && withinSize(10 * 1024 * 1024);  // 10 MB
+
+      allow delete: if isOwner(sellerId) || isAdmin();
+    }
+
+
+    // ─────────────────────────────────────────────
+    // CHATS — Message attachments
+    // Path: /chats/{chatId}/{allPaths=**}
+    //
+    // Read:   participants of the chat only
+    // Write:  participants of the chat only, images/videos, max 10 MB
+    // Delete: admin only (chat history should be immutable for users)
+    // ─────────────────────────────────────────────
     match /chats/{chatId}/{allPaths=**} {
-      allow read, write: if request.auth != null
-        && firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid])
-        && request.resource.size < 10 * 1024 * 1024
-        && (request.resource.contentType.matches('image/.*')
-            || request.resource.contentType.matches('video/.*'));
+      // Fetch the chat document once and reuse for both read and write.
+      function isChatParticipant() {
+        return isAuth() &&
+          firestore.get(
+            /databases/(default)/documents/chats/$(chatId)
+          ).data.participants.hasAny([request.auth.uid]);
+      }
+
+      allow read: if isChatParticipant() || isAdmin();
+
+      // Split create/update from delete so request.resource
+      // (which is null on deletes) is only accessed on uploads.
+      allow create, update: if isChatParticipant()
+        && isImageOrVideo()
+        && withinSize(10 * 1024 * 1024);  // 10 MB
+
+      allow delete: if isAdmin();
     }
+
+
+    // ─────────────────────────────────────────────
+    // REPORTES — Abuse report attachments (optional screenshots)
+    // Path: /reportes/{userId}/{reporteId}/{allPaths=**}
+    //
+    // Read:   admin only
+    // Write:  the reporting user only, images only, max 5 MB
+    // Delete: admin only
+    // ─────────────────────────────────────────────
+    match /reportes/{userId}/{reporteId}/{allPaths=**} {
+      allow read: if isAdmin();
+
+      allow create, update: if isOwner(userId)
+        && isImage()
+        && withinSize(5 * 1024 * 1024);  // 5 MB
+
+      allow delete: if isAdmin();
+    }
+
+
+    // ─────────────────────────────────────────────
+    // SOPORTE — Support ticket attachments
+    // Path: /soporte/{userId}/{ticketId}/{allPaths=**}
+    //
+    // Read:   the ticket owner or admin
+    // Write:  the ticket owner only, images only, max 5 MB
+    // Delete: admin only
+    // ─────────────────────────────────────────────
+    match /soporte/{userId}/{ticketId}/{allPaths=**} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create, update: if isOwner(userId)
+        && isImage()
+        && withinSize(5 * 1024 * 1024);  // 5 MB
+
+      allow delete: if isAdmin();
+    }
+
   }
 }

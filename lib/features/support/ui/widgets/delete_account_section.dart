@@ -50,12 +50,16 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
 
     if (!mounted) return;
     setState(() => _isProcessing = true);
+
     try {
       final userData = await userService.getUsuarioById(user.uid);
       final telefono = userData?['telefono'] as String?;
 
       if (telefono == null || telefono.trim().isEmpty) {
-        throw Exception('No tienes teléfono registrado. Para mayor seguridad, primero debes agregar un teléfono.');
+        throw Exception(
+          'No tienes teléfono registrado. Para mayor seguridad, '
+          'primero debes agregar un teléfono.',
+        );
       }
 
       await FirebaseAuth.instance.verifyPhoneNumber(
@@ -70,7 +74,7 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
           }
         },
         codeSent: (String vid, int? token) async {
-          if (mounted) await _showDeleteSmsCodeDialog(vid, user.email!);
+          if (mounted) await _showDeleteSmsCodeDialog(vid, user.uid);
         },
         codeAutoRetrievalTimeout: (_) {},
       );
@@ -84,7 +88,10 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
     }
   }
 
-  Future<void> _showDeleteSmsCodeDialog(String verificationId, String userEmail) async {
+  Future<void> _showDeleteSmsCodeDialog(
+    String verificationId,
+    String uid, // ← uid instead of email; that's what scheduleAccountDeletion needs
+  ) async {
     setState(() => _isProcessing = false);
     final codeController = TextEditingController();
     bool isVerifying = false;
@@ -99,7 +106,9 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Para proteger tu cuenta, hemos enviado un código a tu número.'),
+                const Text(
+                  'Para proteger tu cuenta, hemos enviado un código a tu número.',
+                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: codeController,
@@ -109,10 +118,11 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-                if (isVerifying) const Padding(
-                  padding: EdgeInsets.only(top: 16),
-                  child: CircularProgressIndicator(),
-                ),
+                if (isVerifying)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: CircularProgressIndicator(),
+                  ),
               ],
             ),
             actions: [
@@ -125,38 +135,47 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
                   backgroundColor: Theme.of(context).colorScheme.error,
                   foregroundColor: Theme.of(context).colorScheme.onError,
                 ),
-                onPressed: isVerifying ? null : () async {
-                  if (codeController.text.trim().isEmpty) return;
+                onPressed: isVerifying
+                    ? null
+                    : () async {
+                        if (codeController.text.trim().isEmpty) return;
 
-                  setStateDialog(() => isVerifying = true);
-                  try {
-                    final credential = PhoneAuthProvider.credential(
-                      verificationId: verificationId,
-                      smsCode: codeController.text.trim(),
-                    );
+                        setStateDialog(() => isVerifying = true);
+                        try {
+                          final credential = PhoneAuthProvider.credential(
+                            verificationId: verificationId,
+                            smsCode: codeController.text.trim(),
+                          );
 
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user != null) {
-                      await user.reauthenticateWithCredential(credential);
-                      await userService.scheduleAccountDeletion(email: userEmail);
-                    }
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user != null) {
+                            await user.reauthenticateWithCredential(credential);
 
-                    if (!context.mounted) return;
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('✅ Tu cuenta ha sido agendada para eliminación en 24 horas.'),
-                        duration: Duration(seconds: 8),
-                      ),
-                    );
-                  } catch (e) {
-                    setStateDialog(() => isVerifying = false);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Código incorrecto o expirado.')),
-                    );
-                  }
-                },
+                            // Pass uid positionally — matches scheduleAccountDeletion(String uid)
+                            await userService.scheduleAccountDeletion(uid);
+                          }
+
+                          if (!context.mounted) return;
+                          Navigator.of(context)
+                              .popUntil((route) => route.isFirst);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                '✅ Tu cuenta ha sido agendada para eliminación en 24 horas.',
+                              ),
+                              duration: Duration(seconds: 8),
+                            ),
+                          );
+                        } catch (e) {
+                          setStateDialog(() => isVerifying = false);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Código incorrecto o expirado.'),
+                            ),
+                          );
+                        }
+                      },
                 child: const Text('CONFIRMAR ELIMINACIÓN'),
               ),
             ],
@@ -173,14 +192,21 @@ class _DeleteAccountSectionState extends State<DeleteAccountSection> {
       leading: Icon(Icons.delete_forever_outlined, color: colorScheme.error),
       title: Text(
         _isProcessing ? 'Procesando...' : 'Eliminar cuenta',
-        style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.error),
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: colorScheme.error,
+        ),
       ),
       subtitle: const Text(
         'Borrar permanentemente tus datos',
         style: TextStyle(fontSize: 12),
       ),
       trailing: _isProcessing
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : Icon(Icons.chevron_right, size: 20, color: colorScheme.outline),
       onTap: _isProcessing ? null : handleDeleteAccount,
     );

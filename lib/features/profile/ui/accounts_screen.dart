@@ -11,6 +11,7 @@ import 'package:xatruch_realstate/features/support/ui/support_screen.dart';
 import 'package:xatruch_realstate/features/profile/ui/sales_history_screen.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/user_service.dart';
+import 'package:xatruch_realstate/core/services/payment_service.dart'; // ← added
 import 'package:xatruch_realstate/features/profile/ui/widgets/profile_header.dart';
 import 'package:xatruch_realstate/features/profile/ui/widgets/profile_menu_tile.dart';
 
@@ -108,6 +109,8 @@ class _AccountScreenState extends State<AccountScreen> {
                       ).then((_) => _loadUserData());
                     },
                   ),
+
+                  // Subscription screen — shows plan details and upgrade options.
                   ProfileMenuTile(
                     icon: Icons.star_outline,
                     title: 'Suscripción',
@@ -120,6 +123,16 @@ class _AccountScreenState extends State<AccountScreen> {
                       ).then((_) => _loadUserData());
                     },
                   ),
+
+                  // Customer Center — cancel, restore, refund requests.
+                  // Shown as a separate tile below the subscription screen tile
+                  // so users have quick access without navigating into the screen.
+                  ProfileMenuTile(
+                    icon: Icons.card_membership, // ← Icons.manage_subscriptions doesn't exist
+                    title: 'Gestionar suscripción',
+                    onTap: () => paymentService.presentCustomerCenter(),
+                  ),
+
                   ProfileMenuTile(
                     icon: Icons.favorite_border,
                     title: 'Favoritos',
@@ -209,4 +222,4 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
     );
   }
-}
+}  

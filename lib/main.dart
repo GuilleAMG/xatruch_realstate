@@ -19,10 +19,8 @@ import 'package:xatruch_realstate/features/auth/ui/login_screen.dart';
 import 'package:xatruch_realstate/features/auth/ui/widgets/auth_gate.dart';
 import 'package:xatruch_realstate/firebase_options.dart';
 
-/// Llave global para navegar sin depender del BuildContext en callbacks externos.
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Instancia global del coordinador de sesión para orquestar cambios de auth.
 final sessionCoordinator = SessionCoordinator(
   getPushToken: () => notificationService.getToken(),
   savePushToken: (token) => userService.saveFcmToken(token),
@@ -34,18 +32,22 @@ final sessionCoordinator = SessionCoordinator(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicialización de servicios core
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // ✅ Guard para evitar FirebaseException [core/duplicate-app]
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
- await FirebaseAppCheck.instance.activate(
-  providerAndroid: kDebugMode
-      ? AndroidDebugProvider()
-      : AndroidPlayIntegrityProvider(),
-  providerApple: kDebugMode
-      ? AppleDebugProvider()
-      : AppleDeviceCheckProvider(),
-  providerWeb: ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
-);
+  await FirebaseAppCheck.instance.activate(
+    providerAndroid: kDebugMode
+        ? AndroidDebugProvider()
+        : AndroidPlayIntegrityProvider(),
+    providerApple: kDebugMode
+        ? AppleDebugProvider()
+        : AppleDeviceCheckProvider(),
+    providerWeb: ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
+  );
 
   // Configurar Crashlytics para captura global de errores solo en plataformas soportadas
   if (!kIsWeb &&
@@ -81,7 +83,7 @@ void main() async {
   // Configurar el callback de navegación al tocar una notificación
   notificationService.onNotificationTap = (RemoteMessage message) async {
     final enabled = await notificationService.isNotificationsEnabled();
-    if (!enabled) return;
+    if (!enabled) return; 
 
     final routeInfo = NotificationService.parseNotificationRoute(message);
     final targetIndex = routeInfo['index'] as int;
@@ -117,15 +119,14 @@ void main() async {
   runApp(const MainApp());
 
   // Verificar conexión con Firestore en segundo plano.
-  unawaited(
-    userService.checkConnection().then((isConnected) {
-      if (isConnected) {
-        debugPrint('Successfully connected to Firestore');
-      } else {
-        debugPrint('Failed to connect to Firestore');
-      }
-    }),
-  );
+  unawaited(() async {
+    final bool isConnected = await userService.checkConnection();
+    if (isConnected) {
+      debugPrint('Successfully connected to Firestore');
+    } else {
+      debugPrint('Failed to connect to Firestore');
+    }
+  }());
 }
 
 class MainApp extends StatelessWidget {

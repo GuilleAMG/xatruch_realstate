@@ -13,13 +13,16 @@ class NotificationDataService {
   /// Envía una notificación a un usuario específico.
   Future<void> sendNotification(AppNotification notification) async {
     try {
+      debugPrint('[NotificationDataService] Sending notification to ${notification.userId}');
       await _db
           .collection('usuarios')
           .doc(notification.userId)
           .collection('notificaciones')
           .add(notification.toMap());
+      debugPrint('[NotificationDataService] Notification sent successfully');
     } catch (e) {
-      debugPrint('Error al enviar notificación: $e');
+      debugPrint('[NotificationDataService] ERROR sending notification: $e');
+      rethrow; // Rethrow to let caller handle it
     }
   }
 

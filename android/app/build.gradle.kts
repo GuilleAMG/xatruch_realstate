@@ -5,12 +5,11 @@ plugins {
     id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.xatruch_realstate"
+    namespace = "com.xatruch.realstate"
     compileSdk = 36
     buildToolsVersion = "35.0.0"
     ndkVersion = flutter.ndkVersion
@@ -21,14 +20,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // kotlinOptions replaced by top-level kotlin block
-
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.android.application"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        applicationId = "com.xatruch.realstate"
+        minSdk = 24        // Required for RevenueCat Paywalls (Android 7.0+)
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -36,8 +30,6 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

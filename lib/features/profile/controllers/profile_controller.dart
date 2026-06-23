@@ -33,7 +33,7 @@ class ProfileController extends ChangeNotifier {
     if (user == null) return;
 
     final data = await userService.getUsuarioById(user.uid);
-    
+
     nameController.text = (data?['nombre'] as String?) ?? '';
     emailController.text = (data?['email'] as String?) ?? user.email ?? '';
     phoneController.text = (data?['telefono'] as String?) ?? '';
@@ -63,7 +63,7 @@ class ProfileController extends ChangeNotifier {
 
     try {
       await user.reload();
-      final refreshedUser = FirebaseAuth.instance.currentUser;
+      //final refreshedUser = FirebaseAuth.instance.currentUser;
       String? uploadedPhotoUrl = photoUrl;
 
       if (newPhoto != null) {
@@ -73,23 +73,24 @@ class ProfileController extends ChangeNotifier {
         );
       }
 
-      final updatedData = {
-        'nombre': nameController.text.trim(),
-        'email': refreshedUser?.email ?? emailController.text.trim(),
-        'telefono': phoneController.text.trim(),
-        'dni': dniController.text.trim(),
-        'photoUrl': uploadedPhotoUrl ?? '',
-        'uid': user.uid,
-      };
+      // updateProfile is the correct method here — the user document
+      // already exists (created during registration via addUserProfile).
+      // addUserProfile / createUserDocument should only be called once,
+      // at registration time.
+      await userService.updateProfile(
+        uid: user.uid,
+        nombre: nameController.text.trim(),
+        photoUrl: uploadedPhotoUrl ?? '',
+        telefono: phoneController.text.trim(),
+        dni: dniController.text.trim(),
+      );
 
-      await userService.addUserProfile(user.uid, updatedData);
-      
-      final finalAvatar = (uploadedPhotoUrl?.isNotEmpty ?? false) 
-          ? uploadedPhotoUrl! 
+      final finalAvatar = (uploadedPhotoUrl?.isNotEmpty ?? false)
+          ? uploadedPhotoUrl!
           : 'assets/icons/default_avatar.png';
-          
+
       await chatService.syncUserAvatar(user.uid, finalAvatar);
-      
+
       isSaving = false;
       notifyListeners();
       return true;
@@ -110,16 +111,17 @@ class ProfileController extends ChangeNotifier {
   /// Inicia el proceso de verificación de teléfono vía SMS.
   Future<String> sendPhoneVerification(String phone) async {
     final completer = Completer<String>();
-    
+
     await FirebaseAuth.instance.verifyPhoneNumber(
       phoneNumber: phone,
       timeout: const Duration(seconds: 60),
       verificationCompleted: (_) {},
       verificationFailed: (e) => completer.completeError(e),
       codeSent: (id, _) => completer.complete(id),
-      codeAutoRetrievalTimeout: (id) => !completer.isCompleted ? completer.complete(id) : null,
+      codeAutoRetrievalTimeout: (id) =>
+          !completer.isCompleted ? completer.complete(id) : null,
     );
-    
+
     return completer.future;
   }
 
@@ -132,7 +134,7 @@ class ProfileController extends ChangeNotifier {
       verificationId: verificationId,
       smsCode: smsCode,
     );
-    
+
     await user.updatePhoneNumber(credential);
     phoneController.text = user.phoneNumber ?? phoneController.text;
     notifyListeners();

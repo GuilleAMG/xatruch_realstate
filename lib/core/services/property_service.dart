@@ -13,18 +13,51 @@ class PropertyService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // ─────────────────────────────────────────────
-  //  Properties (Propiedades)
+  // SUBSCRIPTION LIMIT HELPERS
   // ─────────────────────────────────────────────
 
-  /// Verifica si el usuario puede publicar una nueva propiedad según su nivel de suscripción
-  Future<void> checkPostLimit(String userId) async {
-    final subInfo = await subscriptionService.getSubscriptionInfo(userId);
-    final tierConfig = subInfo['config'] as Map<String, dynamic>;
-    final limit = tierConfig['postsPerMonth'] as int;
-    final currentCount = subInfo['monthlyPostsCount'] as int;
+  Future<({int limit, int currentCount})> _getPostLimitInfo(
+    String userId,
+  ) async {
+    final userDoc = await _db.collection('usuarios').doc(userId).get();
+    final data = userDoc.data();
 
-    if (limit != -1 && currentCount >= limit) {
-      throw Exception('Has alcanzado el límite de publicaciones mensuales para tu plan.');
+    final firestoreTier = (data?['tier'] as String?) ?? 'free';
+    final currentCount = (data?['monthlyPostsCount'] as int?) ?? 0;
+
+    final displayName = _firestoreTierToDisplayName(firestoreTier);
+    final tierConfig = SubscriptionService.subscriptionTiers[displayName];
+    final limit = (tierConfig?['postsPerMonth'] as int?) ?? 0;
+
+    return (limit: limit, currentCount: currentCount);
+  }
+
+  String _firestoreTierToDisplayName(String firestoreTier) {
+    return switch (firestoreTier) {
+      'monthly'     => 'Residente',
+      'three_month' => 'Inversionista',
+      'six_month'   => 'Inversionista',
+      'yearly'      => 'Empresario',
+      _             => 'Estudiante',
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // PROPERTIES (Propiedades)
+  // ─────────────────────────────────────────────
+
+  /// Verifica si el usuario puede publicar una nueva propiedad.
+  Future<void> checkPostLimit(String userId) async {
+    // Temporarily disabled: allow all authenticated users to publish
+    // regardless of their subscription tier or monthly post count.
+    return;
+
+    // ignore: dead_code
+    final (:limit, :currentCount) = await _getPostLimitInfo(userId);
+    if (limit != 999 && currentCount >= limit) {
+      throw Exception(
+        'Has alcanzado el límite de publicaciones mensuales para tu plan.',
+      );
     }
   }
 
@@ -38,12 +71,17 @@ class PropertyService {
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => Property.fromMap(doc.data(), doc.id))
-              .where((p) => !p.isSold && (p.expiresAt == null || p.expiresAt!.isAfter(DateTime.now())))
+              .where(
+                (p) =>
+                    !p.isSold &&
+                    (p.expiresAt == null ||
+                        p.expiresAt!.isAfter(DateTime.now())),
+              )
               .toList(),
         );
   }
 
-  /// Retorna las propiedades vendidas de un vendedor específico
+  /// Retorna las propiedades vendidas de un vendedor específico.
   Stream<List<Property>> getSoldPropertiesList(String sellerId) {
     return _db
         .collection('propiedades')
@@ -58,7 +96,7 @@ class PropertyService {
             list.sort((a, b) {
               final dateA = a.soldAt ?? DateTime(2000);
               final dateB = b.soldAt ?? DateTime(2000);
-              return dateB.compareTo(dateA); // Descending
+              return dateB.compareTo(dateA);
             });
             return list;
           },
@@ -87,51 +125,53 @@ class PropertyService {
     }
   }
 
-  /// Agrega un nuevo documento de propiedad a Firestore, verificando límites del plan primero.
+  /// Agrega un nuevo documento de propiedad a Firestore.
   Future<String?> addProperty(Property property) async {
     try {
       final user = authService.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      final subInfo = await subscriptionService.getSubscriptionInfo(user.uid);
-      final tierConfig = subInfo['config'] as Map<String, dynamic>;
-      final limit = tierConfig['postsPerMonth'] as int;
-      final currentCount = subInfo['monthlyPostsCount'] as int;
+      // Subscription limit check temporarily disabled.
+      // final (:limit, :currentCount) = await _getPostLimitInfo(user.uid);
+      // if (limit != 999 && currentCount >= limit) {
+      //   throw Exception(
+      //     'Has alcanzado el límite de publicaciones mensuales para tu plan.',
+      //   );
+      // }
 
-      if (limit != -1 && currentCount >= limit) {
-        throw Exception('Has alcanzado el límite de publicaciones mensuales para tu plan.');
-      }
-
-      // Calcular fecha de expiración
-      final durationMonths = tierConfig['durationMonths'] as int;
-      final expiresAt = DateTime.now().add(Duration(days: 30 * durationMonths));
+      // Expiration: base duration on tier.
+      final firestoreTier = (await _db
+              .collection('usuarios')
+              .doc(user.uid)
+              .get())
+          .data()?['tier'] as String? ??
+          'free';
+      final durationMonths = _expirationMonthsForTier(firestoreTier);
+      final expiresAt =
+          DateTime.now().add(Duration(days: 30 * durationMonths));
 
       final propertyData = property.toMap();
       propertyData['expiresAt'] = expiresAt.toIso8601String();
       propertyData['sellerId'] = user.uid;
 
-      final DocumentReference docRef = await _db
-          .collection('propiedades')
-          .add(propertyData);
-
+      final DocumentReference docRef =
+          await _db.collection('propiedades').add(propertyData);
       final propertyId = docRef.id;
 
-      // Actualizar conteo de publicaciones del usuario
+      // Increment monthly post count.
       await _db.collection('usuarios').doc(user.uid).update({
         'monthlyPostsCount': FieldValue.increment(1),
       });
 
-      // Notificar a seguidores
+      // Notify followers.
       try {
         final sellerId = property.sellerId;
         if (sellerId.isNotEmpty) {
           final followers = await followService.getFollowerIds(sellerId);
-          final currentUserDoc = await _db
-              .collection('usuarios')
-              .doc(sellerId)
-              .get();
-          final sellerName =
-              (currentUserDoc.data()?['nombre'] as String?) ?? 'Un vendedor que sigues';
+          final currentUserDoc =
+              await _db.collection('usuarios').doc(sellerId).get();
+          final sellerName = (currentUserDoc.data()?['nombre'] as String?) ??
+              'Un vendedor que sigues';
 
           for (final followerId in followers) {
             await notificationDataService.sendNotification(
@@ -144,7 +184,8 @@ class PropertyService {
                 type: 'new_post',
                 relatedId: propertyId,
                 senderName: sellerName,
-                senderPhoto: currentUserDoc.data()?['photoUrl'] as String?,
+                senderPhoto:
+                    currentUserDoc.data()?['photoUrl'] as String?,
               ),
             );
           }
@@ -158,6 +199,16 @@ class PropertyService {
       debugPrint('Error al agregar propiedad: $e');
       rethrow;
     }
+  }
+
+  int _expirationMonthsForTier(String firestoreTier) {
+    return switch (firestoreTier) {
+      'monthly'     => 1,
+      'three_month' => 3,
+      'six_month'   => 6,
+      'yearly'      => 12,
+      _             => 1,
+    };
   }
 
   /// Actualiza un documento de propiedad existente en Firestore.
@@ -177,12 +228,12 @@ class PropertyService {
   /// Elimina un documento de propiedad por ID.
   Future<bool> deleteProperty(String id) async {
     try {
-      // Notificar a usuarios que marcaron como favorito
       try {
-        final propertyDoc = await _db.collection('propiedades').doc(id).get();
+        final propertyDoc =
+            await _db.collection('propiedades').doc(id).get();
         if (propertyDoc.exists) {
-          final propertyTitle =
-              (propertyDoc.data()?['title'] as String?) ?? 'una propiedad que te gusta';
+          final propertyTitle = (propertyDoc.data()?['title'] as String?) ??
+              'una propiedad que te gusta';
 
           final favoritersQuery = await _db
               .collectionGroup('favoritos')

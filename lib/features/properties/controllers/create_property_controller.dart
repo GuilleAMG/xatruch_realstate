@@ -51,13 +51,20 @@ class CreatePropertyController extends ChangeNotifier {
     titleController = TextEditingController(text: p?.title ?? '');
     locationController = TextEditingController(text: p?.location ?? '');
     municipalityController = TextEditingController(text: p?.municipality ?? '');
-    selectedDepartment = p?.department.isNotEmpty == true ? p!.department : null;
-    selectedPropertyType = p?.propertyType.isNotEmpty == true ? p!.propertyType : null;
-    priceController = TextEditingController(text: p?.price.toString() ?? '');
-    descriptionController = TextEditingController(text: p?.description ?? '');
-    bedroomsController = TextEditingController(text: p?.bedrooms.toString() ?? '');
-    bathroomsController = TextEditingController(text: p?.bathrooms.toString() ?? '');
-    areaController = TextEditingController(text: p?.area.toString() ?? '');
+    selectedDepartment =
+        p?.department.isNotEmpty == true ? p!.department : null;
+    selectedPropertyType =
+        p?.propertyType.isNotEmpty == true ? p!.propertyType : null;
+    priceController =
+        TextEditingController(text: p?.price.toString() ?? '');
+    descriptionController =
+        TextEditingController(text: p?.description ?? '');
+    bedroomsController =
+        TextEditingController(text: p?.bedrooms.toString() ?? '');
+    bathroomsController =
+        TextEditingController(text: p?.bathrooms.toString() ?? '');
+    areaController =
+        TextEditingController(text: p?.area.toString() ?? '');
     hasElectricity = p?.hasElectricity ?? false;
     hasWater = p?.hasWater ?? false;
     selectedLatitude = p?.latitude;
@@ -86,7 +93,12 @@ class CreatePropertyController extends ChangeNotifier {
       return;
     }
     try {
-      await paymentService.syncCustomerInfo();
+      // Check entitlement directly instead of calling syncCustomerInfo,
+      // which belongs to the SessionCoordinator lifecycle only.
+      // hasPremium() fetches fresh CustomerInfo from RevenueCat internally.
+      final isPremium = await paymentService.hasPremium();
+      debugPrint('[CreatePropertyController] isPremium: $isPremium');
+
       await propertyService.checkPostLimit(user.uid);
       isLoadingLimit = false;
       notifyListeners();
@@ -157,7 +169,9 @@ class CreatePropertyController extends ChangeNotifier {
 
   // ── Localización ──
 
-  Future<void> getCurrentLocation({required void Function(String) onError}) async {
+  Future<void> getCurrentLocation({
+    required void Function(String) onError,
+  }) async {
     try {
       final position = await locationService.getCurrentLocation();
       selectedLatitude = position.latitude;
@@ -178,7 +192,9 @@ class CreatePropertyController extends ChangeNotifier {
 
   // ── Envío del Formulario ──
 
-  Future<bool> submitProperty({required void Function(String) onError}) async {
+  Future<bool> submitProperty({
+    required void Function(String) onError,
+  }) async {
     final user = authService.currentUser;
     if (user == null) {
       onError('Debe iniciar sesión para realizar esta acción');
@@ -198,7 +214,8 @@ class CreatePropertyController extends ChangeNotifier {
           : DateTime.now().millisecondsSinceEpoch.toString();
 
       final List<String> finalImageUrls = List.from(existingMediaUrls);
-      final List<String> finalVideoUrls = List.from(propertyToEdit?.videoUrls ?? []);
+      final List<String> finalVideoUrls =
+          List.from(propertyToEdit?.videoUrls ?? []);
 
       await _uploadMediaFiles(propertyId, finalImageUrls, finalVideoUrls);
 
@@ -206,7 +223,8 @@ class CreatePropertyController extends ChangeNotifier {
       notifyListeners();
 
       final userProfile = await userService.getUsuarioById(user.uid);
-      final String sellerName = (userProfile?['nombre'] as String?) ?? user.email ?? 'Vendedor';
+      final String sellerName =
+          (userProfile?['nombre'] as String?) ?? user.email ?? 'Vendedor';
 
       final property = Property(
         id: isEditing ? propertyToEdit!.id : '',
@@ -222,7 +240,8 @@ class CreatePropertyController extends ChangeNotifier {
         bedrooms: int.parse(bedroomsController.text.trim()),
         bathrooms: int.parse(bathroomsController.text.trim()),
         area: double.parse(areaController.text.trim()),
-        sellerName: isEditing ? propertyToEdit!.sellerName : sellerName,
+        sellerName:
+            isEditing ? propertyToEdit!.sellerName : sellerName,
         sellerId: user.uid,
         hasElectricity: hasElectricity,
         hasWater: hasWater,
@@ -247,16 +266,22 @@ class CreatePropertyController extends ChangeNotifier {
     }
   }
 
-  Future<void> _uploadMediaFiles(String propertyId, List<String> imageUrls, List<String> videoUrls) async {
+  Future<void> _uploadMediaFiles(
+    String propertyId,
+    List<String> imageUrls,
+    List<String> videoUrls,
+  ) async {
     if (selectedMedia.isEmpty) return;
 
     final files = selectedMedia.map((xf) => File(xf.path)).toList();
     for (int i = 0; i < files.length; i++) {
       uploadProgress = (i / files.length);
       notifyListeners();
-      
-      final extension = files[i].path.split('.').last.toLowerCase();
-      final storagePath = 'propiedades/$propertyId/${DateTime.now().millisecondsSinceEpoch}_$i.$extension';
+
+      final extension =
+          files[i].path.split('.').last.toLowerCase();
+      final storagePath =
+          'propiedades/$propertyId/${DateTime.now().millisecondsSinceEpoch}_$i.$extension';
       final url = await storageService.uploadFile(files[i], storagePath);
 
       if (['mp4', 'mov', 'avi', 'mkv'].contains(extension)) {

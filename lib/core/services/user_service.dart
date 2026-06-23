@@ -1,206 +1,269 @@
-// Servicio de usuarios: operaciones CRUD de perfiles, preferencias del usuario,
-// gestión de tokens FCM y programación de eliminación de cuenta.
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+// Handles all Firestore operations related to the usuarios collection.
+// On user creation, writes the default role/tier fields required by
+// the Firestore security rules (isPremium, isAdmin, tier, premiumSince).
 
-/// Gestiona las operaciones CRUD de perfiles de usuario y preferencias.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
+import 'package:xatruch_realstate/features/profile/data/user.dart' as user_model;
+
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
 
   // ─────────────────────────────────────────────
-  //  Conexión
+  // DOCUMENT REFERENCE HELPERS
   // ─────────────────────────────────────────────
 
-  /// Verifica la conexión a Firestore intentando obtener metadatos de un documento.
-  Future<bool> checkConnection() async {
-  try {
-    final user = _auth.currentUser;
-    if (user == null) return true;
-
-    await _db
-        .collection('usuarios')
-        .doc(user.uid)
-        .get()
-        .timeout(const Duration(seconds: 5));
-    return true;
-  } catch (e) {
-    debugPrint('Firestore Connection Error: $e');
-    return false;
-  }
-}
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
+      _db.collection('usuarios').doc(uid);
 
   // ─────────────────────────────────────────────
-  //  Usuarios (Users) — CRUD
+  // CREATE USER DOCUMENT ON REGISTRATION
   // ─────────────────────────────────────────────
 
-  /* Future<List<Map<String, dynamic>>> getUsuarios() async {
-    try {
-      final List<Map<String, dynamic>> usuarios = [];
-      final QuerySnapshot usuariosQuery = await _db
-          .collection('usuarios')
-          .get();
+  Future<void> createUserDocument({
+    required String uid,
+    required String nombre,
+    required String email,
+    String? photoUrl,
+    String? telefono,
+    String? dni,
+  }) async {
+    final docRef = _userDoc(uid);
+    final snapshot = await docRef.get();
+    if (snapshot.exists) return;
 
-      for (var result in usuariosQuery.docs) {
-        usuarios.add(result.data() as Map<String, dynamic>);
-      }
-      return usuarios;
-    } catch (e) {
-      debugPrint('Error al obtener usuarios: $e');
-      return [];
-    }
-  }
-  */
-  /// Obtiene un documento de usuario individual por ID.
-  Future<Map<String, dynamic>?> getUsuarioById(String id) async {
-    try {
-      final DocumentSnapshot doc = await _db
-          .collection('usuarios')
-          .doc(id)
-          .get();
-      if (doc.exists) {
-        return doc.data() as Map<String, dynamic>;
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error fetching user $id: $e');
-      return null;
-    }
-  }
-
-  /// Crea o actualiza un perfil de usuario vinculado a un UID específico.
-  Future<void> addUserProfile(String uid, Map<String, dynamic> userData) async {
-    await _db
-        .collection('usuarios')
-        .doc(uid)
-        .set(userData, SetOptions(merge: true));
-  }
-
-  /// Agrega un nuevo documento de usuario.
-  Future<String?> addUsuario(Map<String, dynamic> userData) async {
-    try {
-      final DocumentReference docRef = await _db
-          .collection('usuarios')
-          .add(userData);
-      return docRef.id;
-    } catch (e) {
-      debugPrint('Error adding user: $e');
-      return null;
-    }
-  }
-
-  /// Actualiza un documento de usuario existente.
-  Future<bool> updateUsuario(String id, Map<String, dynamic> userData) async {
-    try {
-      await _db.collection('usuarios').doc(id).update(userData);
-      return true;
-    } catch (e) {
-      debugPrint('Error updating user $id: $e');
-      return false;
-    }
-  }
-
-  /// Elimina un documento de usuario.
-  Future<bool> deleteUsuario(String id) async {
-    try {
-      await _db.collection('usuarios').doc(id).delete();
-      return true;
-    } catch (e) {
-      debugPrint('Error deleting user $id: $e');
-      return false;
-    }
-  }
-
-  // ─────────────────────────────────────────────
-  //  Preferencias de Usuario
-  // ─────────────────────────────────────────────
-
-  /// Actualiza la preferencia de notificaciones del usuario actual.
-  Future<void> updateNotificationPreference(bool enabled) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    await _db.collection('usuarios').doc(user.uid).update({
-      'notificationsEnabled': enabled,
+    await docRef.set({
+      'uid': uid,
+      'nombre': nombre,
+      'email': email,
+      'photoUrl': photoUrl ?? '',
+      'telefono': telefono ?? '',
+      'dni': dni ?? '',
+      'isPremium': false,
+      'isAdmin': false,
+      'tier': 'free',
+      'premiumSince': null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'fcmToken': '',
+      // ── Preferences ─────────────────────────────
+      'notificationsEnabled': true,
+      'locationEnabled': false,
+      // ── Account ──────────────────────────────────
+      'scheduledForDeletion': false,
+      'deletionScheduledAt': null,
     });
   }
 
-  /// Guarda el token FCM del usuario actual en Firestore
+  /// Alias used by register_screen.dart and profile_controller.dart.
+  /// Delegates to [createUserDocument].
+  Future<void> addUserProfile({
+    required String uid,
+    required String nombre,
+    required String email,
+    String? photoUrl,
+    String? telefono,
+    String? dni,
+  }) =>
+      createUserDocument(
+        uid: uid,
+        nombre: nombre,
+        email: email,
+        photoUrl: photoUrl,
+        telefono: telefono,
+        dni: dni,
+      );
+
+  // ─────────────────────────────────────────────
+  // FCM TOKEN
+  // ─────────────────────────────────────────────
+
+  /// Saves the FCM token for the current user.
+  /// Uses merge:true to safely write even if the user document
+  /// hasn't been fully created yet (e.g. race condition on first login).
   Future<void> saveFcmToken(String token) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('[UserService] ⚠️ saveFcmToken: No user logged in, skipping');
+      return;
+    }
 
     try {
-      await _db.collection('usuarios').doc(user.uid).set({
+      debugPrint('[UserService] Saving FCM token for user $uid');
+      await _userDoc(uid).set({
         'fcmToken': token,
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      debugPrint('[UserService] ✅ FCM token saved for user $uid');
     } catch (e) {
-      debugPrint('Error saving FCM token: $e');
+      debugPrint('[UserService] ❌ Error saving FCM token: $e');
+      rethrow; // Re-throw so caller can handle or log
     }
   }
 
+  /// Clears the FCM token on logout so the user stops
+  /// receiving push notifications on this device.
+  /// Uses merge:true for the same safety reason as [saveFcmToken].
   Future<void> clearFcmToken() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('[UserService] ⚠️ clearFcmToken: No user logged in, skipping');
+      return;
+    }
 
     try {
-      await _db.collection('usuarios').doc(user.uid).set({
-        'fcmToken': FieldValue.delete(),
+      debugPrint('[UserService] Clearing FCM token for user $uid');
+      await _userDoc(uid).set({
+        'fcmToken': '',
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      debugPrint('[UserService] ✅ FCM token cleared for user $uid');
     } catch (e) {
-      debugPrint('Error clearing FCM token: $e');
+      debugPrint('[UserService] ❌ Error clearing FCM token: $e');
+      // Don't rethrow on logout - just log the error
     }
   }
 
-  /// Actualiza la preferencia de tema del usuario actual.
-  Future<void> updateThemePreference(bool isDarkMode) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+  // ─────────────────────────────────────────────
+  // READ USER DATA (COMPLETE USER MODEL)
+  // ─────────────────────────────────────────────
 
-    await _db.collection('usuarios').doc(user.uid).update({
-      'isDarkMode': isDarkMode,
+  Future<user_model.User?> getUser(String uid) async {
+    try {
+      final snapshot = await _userDoc(uid).get();
+      if (!snapshot.exists) return null;
+      return user_model.User.fromMap(snapshot.data()!, uid);
+    } catch (e) {
+      debugPrint('Error fetching user: $e');
+      return null;
+    }
+  }
+
+  Stream<user_model.User?> streamUser(String uid) {
+    return _userDoc(uid).snapshots().map((snapshot) {
+      if (!snapshot.exists) return null;
+      return user_model.User.fromMap(snapshot.data()!, uid);
     });
   }
 
-  /// Actualiza la preferencia de descubrimiento por ubicación del usuario actual.
-  Future<void> updateLocationPreference(bool enabled) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+  /// Alias para obtener datos del usuario como Map (usado por legacy code).
+  /// Retorna los datos crudos del documento para acceso por índice.
+  Future<Map<String, dynamic>?> getUsuarioById(String uid) async {
+    try {
+      final snapshot = await _userDoc(uid).get();
+      if (!snapshot.exists) return null;
+      return snapshot.data();
+    } catch (e) {
+      debugPrint('Error fetching user data: $e');
+      return null;
+    }
+  }
 
-    await _db.collection('usuarios').doc(user.uid).set({
+  // ─────────────────────────────────────────────
+  // UPDATE USER (COMPLETE USER MODEL)
+  // ─────────────────────────────────────────────
+
+  Future<void> updateUser(user_model.User user) async {
+    try {
+      await _userDoc(user.uid).update(user.toMap());
+    } catch (e) {
+      debugPrint('Error updating user: $e');
+      rethrow;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // UPDATE PROFILE (owner-only fields)
+  // ─────────────────────────────────────────────
+
+  Future<void> updateProfile({
+    required String uid,
+    String? nombre,
+    String? photoUrl,
+    String? telefono,
+    String? dni,
+  }) async {
+    final updates = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (nombre != null) updates['nombre'] = nombre;
+    if (photoUrl != null) updates['photoUrl'] = photoUrl;
+    if (telefono != null) updates['telefono'] = telefono;
+    if (dni != null) updates['dni'] = dni;
+
+    await _userDoc(uid).update(updates);
+  }
+
+  // ─────────────────────────────────────────────
+  // PREFERENCES
+  // ─────────────────────────────────────────────
+
+  /// Toggles push notification preference for the current user.
+  Future<void> updateNotificationPreference({
+    required String uid,
+    required bool enabled,
+  }) async {
+    await _userDoc(uid).update({
+      'notificationsEnabled': enabled,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Toggles location sharing preference for the current user.
+  Future<void> updateLocationPreference({
+    required String uid,
+    required bool enabled,
+  }) async {
+    await _userDoc(uid).update({
       'locationEnabled': enabled,
-    }, SetOptions(merge: true));
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ─────────────────────────────────────────────
-  //  Gestión de Cuenta
+  // ACCOUNT DELETION
   // ─────────────────────────────────────────────
 
-  /// Programa la eliminación de la cuenta del usuario en 24 horas y cierra su sesión.
-  Future<void> scheduleAccountDeletion({required String email}) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Usuario no autenticado.');
-
-    final scheduledDate = DateTime.now().add(const Duration(hours: 24));
-
-    await _db.collection('usuarios').doc(user.uid).update({
-      'deletionRequestedAt': DateTime.now().toIso8601String(),
-      'scheduledDeletionAt': scheduledDate.toIso8601String(),
-      'status': 'pending_deletion',
+  /// Marks the account for deletion after a grace period.
+  /// Actual deletion should be handled by a Cloud Function.
+  Future<void> scheduleAccountDeletion(String uid) async {
+    await _userDoc(uid).update({
+      'scheduledForDeletion': true,
+      'deletionScheduledAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
 
-    // Encolar el correo de advertencia al usuario
-    await _db.collection('mail').add({
-      'to': [email],
-      'message': {
-        'subject': 'Aviso de Eliminación de Cuenta - Xatruch Real Estate',
-        'html':
-            '<p>Has solicitado la eliminación de tu cuenta en Xatruch.</p> <p>Tu perfil y todas tus propiedades serán borradas permanentemente el <b>${scheduledDate.toLocal().toString()}</b>.</p> <p>Si no fuiste tú, por favor contacta a soporte inmediatamente antes de que expire el tiempo (24 horas).</p>',
-      },
-    });
+  // ─────────────────────────────────────────────
+  // CONNECTIVITY CHECK
+  // ─────────────────────────────────────────────
 
-    await _auth.signOut();
+  /// Checks Firestore reachability by attempting a lightweight read.
+  /// Returns true if connected, false otherwise.
+  /// Used in main.dart to gate app startup.
+  Future<bool> checkConnection() async {
+    try {
+      debugPrint('[UserService] Checking Firestore connection...');
+      await _db.collection('usuarios').limit(1).get(
+        const GetOptions(source: Source.server),
+      );
+      debugPrint('[UserService] ✅ Firestore connection OK');
+      return true;
+    } catch (e) {
+      debugPrint('[UserService] ❌ Firestore connection FAILED: $e');
+      return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // DELETE USER DOCUMENT (admin only — enforced by rules)
+  // ─────────────────────────────────────────────
+
+  Future<void> deleteUserDocument(String uid) async {
+    await _userDoc(uid).delete();
   }
 }
 

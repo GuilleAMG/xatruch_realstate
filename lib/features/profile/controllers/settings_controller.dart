@@ -15,13 +15,37 @@ class SettingsController extends ChangeNotifier {
     Future<void> Function(bool value)? updateNotificationPreference,
     Future<void> Function(bool value)? updateLocationPreference,
     Future<void> Function(bool value)? toggleTheme,
-  })  : _getCurrentUserId = getCurrentUserId ?? (() => authService.currentUser?.uid),
-      _getUserData = getUserData ?? ((uid) => userService.getUsuarioById(uid)),
-      _isPermissionGranted = isPermissionGranted ?? (() => notificationService.isPermissionGranted()),
-      _requestNotificationPermission = requestNotificationPermission ?? (() => notificationService.requestPermissions()),
-      _updateNotificationPreference = updateNotificationPreference ?? ((value) => userService.updateNotificationPreference(value)),
-      _updateLocationPreference = updateLocationPreference ?? ((value) => userService.updateLocationPreference(value)),
-      _toggleTheme = toggleTheme ?? ((value) => themeService.toggleTheme(value));
+  })  : _getCurrentUserId =
+            getCurrentUserId ?? (() => authService.currentUser?.uid),
+        _getUserData =
+            getUserData ?? ((uid) => userService.getUsuarioById(uid)),
+        _isPermissionGranted =
+            isPermissionGranted ?? (() => notificationService.isPermissionGranted()),
+        _requestNotificationPermission =
+            requestNotificationPermission ?? (() => notificationService.requestPermissions()),
+        _updateNotificationPreference =
+            updateNotificationPreference ??
+            // Capture uid at call time — not at construction time.
+            ((value) {
+              final uid = authService.currentUser?.uid;
+              if (uid == null) return Future.value();
+              return userService.updateNotificationPreference(
+                uid: uid,
+                enabled: value,
+              );
+            }),
+        _updateLocationPreference =
+            updateLocationPreference ??
+            ((value) {
+              final uid = authService.currentUser?.uid;
+              if (uid == null) return Future.value();
+              return userService.updateLocationPreference(
+                uid: uid,
+                enabled: value,
+              );
+            }),
+        _toggleTheme =
+            toggleTheme ?? ((value) => themeService.toggleTheme(value));
 
   final String? Function() _getCurrentUserId;
   final Future<Map<String, dynamic>?> Function(String uid) _getUserData;
@@ -56,9 +80,7 @@ class SettingsController extends ChangeNotifier {
   Future<bool> handleNotificationToggle(bool value) async {
     if (value) {
       final granted = await _requestNotificationPermission();
-      if (!granted) {
-        return false;
-      }
+      if (!granted) return false;
     }
 
     await _updateNotificationPreference(value);
