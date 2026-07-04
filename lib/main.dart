@@ -32,8 +32,8 @@ final sessionCoordinator = SessionCoordinator(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Guard para evitar FirebaseException [core/duplicate-app]
-  if (Firebase.apps.isEmpty) {
+  // Guard para evitar la FirebaseException [core/duplicate-app]
+  if (Firebase.apps.isEmpty) { 
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -46,14 +46,13 @@ void main() async {
     providerApple: kDebugMode
         ? AppleDebugProvider()
         : AppleDeviceCheckProvider(),
-    providerWeb: ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
+  // providerWeb: ReCaptchaV3Provider('RECAPTCHA_SITE_KEY'),
   );
 
   // Configurar Crashlytics para captura global de errores solo en plataformas soportadas
   if (!kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.macOS)) {
+          defaultTargetPlatform == TargetPlatform.iOS)) {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
@@ -79,7 +78,7 @@ void main() async {
       sessionCoordinator.handleAuthStateChanged(null);
     }
   });
-
+ 
   // Configurar el callback de navegación al tocar una notificación
   notificationService.onNotificationTap = (RemoteMessage message) async {
     final enabled = await notificationService.isNotificationsEnabled();

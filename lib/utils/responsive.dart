@@ -1,5 +1,4 @@
 // Utilidades de diseño responsivo: breakpoints y constantes de espaciado
-// que se adaptan según el tamaño del dispositivo.
 import 'package:flutter/material.dart';
 
 class Breakpoints {
