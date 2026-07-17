@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:xatruch_realstate/core/services/profile_state_service.dart';
 import 'package:xatruch_realstate/features/profile/controllers/profile_controller.dart';
 import 'package:xatruch_realstate/features/profile/ui/widgets/profile_text_field.dart';
 import 'package:xatruch_realstate/features/profile/ui/widgets/profile_verifiable_field.dart';
@@ -130,6 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         if (await _controller.saveProfile()) {
+                          await profileStateService.refreshAfterProfileUpdate();
                           _showSnackBar('¡Perfil actualizado!', isSuccess: true);
                           if (context.mounted) Navigator.of(context).pop();
                         }

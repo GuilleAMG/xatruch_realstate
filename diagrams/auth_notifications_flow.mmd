@@ -1,0 +1,24 @@
+sequenceDiagram
+  participant User as Usuario
+  participant App as Flutter App
+  participant Auth as Firebase Auth
+  participant Session as SessionCoordinator
+  participant UserSvc as User Service
+  participant Notif as Notification Service
+  participant FirebaseMsg as Firebase Messaging
+
+  User->>App: Abre app / Inicia sesión
+  App->>Auth: SignIn (email/password / provider)
+  Auth-->>App: Auth state (user)
+  App->>Session: handleAuthStateChanged(user)
+  Session->>UserSvc: saveFcmToken? / sync user data
+  Session->>Notif: registerForPush()
+  Notif->>FirebaseMsg: request token / subscribe topics
+  FirebaseMsg-->>Notif: push token
+  Notif-->>UserSvc: save token (via API / Firestore)
+
+  Note over FirebaseMsg,App: Tiempo de vida normal
+  FirebaseMsg-->>App: Remote Message (notification arrives)
+  App->>Notif: onMessage/onTap handler
+  Notif->>App: parseNotificationRoute()
+  App->>App: navigate to target screen

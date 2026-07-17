@@ -1,43 +1,91 @@
 // Servicio de tema: gestiona el modo claro/oscuro de la aplicación,
-// sincronizando la preferencia del usuario con Firestore.
+// usando persistencia local y sincronizando la preferencia del usuario con Firestore.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 
 class ThemeService extends ChangeNotifier {
-  ThemeService() {
-    _initTheme();
+  ThemeService({SharedPreferences? sharedPreferences, FirebaseFirestore? firestore})
+      : _sharedPreferences = sharedPreferences,
+        _firestore = firestore ?? FirebaseFirestore.instance {
+    unawaited(_initTheme());
+    authService.authStateChanges.listen((user) {
+      if (user != null) {
+        unawaited(_syncThemeFromFirestore(user.uid));
+      } else {
+        unawaited(_restoreThemeFromPreferences());
+      }
+    });
   }
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const String _themePreferenceKey = 'theme_mode_dark';
+
+  final SharedPreferences? _sharedPreferences;
+  final FirebaseFirestore _firestore;
   ThemeMode _themeMode = ThemeMode.light;
 
   ThemeMode get themeMode => _themeMode;
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
-  void _initTheme() {
+  Future<void> _initTheme() async {
+    await _restoreThemeFromPreferences();
+
     final user = authService.currentUser;
     if (user != null) {
-      _firestore.collection('usuarios').doc(user.uid).snapshots().listen((doc) {
-        if (doc.exists) {
-          final isDark = (doc.data()?['isDarkMode'] as bool?) ?? false;
-          _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-          notifyListeners();
-        }
-      });
+      await _syncThemeFromFirestore(user.uid);
+    }
+  }
+
+  Future<void> _restoreThemeFromPreferences() async {
+    final prefs = await _getPreferences();
+    final isDarkMode = prefs.getBool(_themePreferenceKey);
+    _themeMode = isDarkMode == true ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
+
+  Future<void> _syncThemeFromFirestore(String uid) async {
+    try {
+      final snapshot = await _firestore.collection('usuarios').doc(uid).get();
+      final isDark = snapshot.data()?['isDarkMode'] as bool?;
+      if (isDark != null) {
+        _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+        await _persistThemePreference(isDark);
+        notifyListeners();
+      }
+    } catch (_) {
+      // Se mantiene el valor local si Firestore no está disponible.
     }
   }
 
   Future<void> toggleTheme(bool isOn) async {
+    _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
+    await _persistThemePreference(isOn);
+    notifyListeners();
+
     final user = authService.currentUser;
     if (user != null) {
-      _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
-      notifyListeners();
-      await _firestore.collection('usuarios').doc(user.uid).update({
-        'isDarkMode': isOn,
-      });
+      try {
+        await _firestore.collection('usuarios').doc(user.uid).set(
+          {'isDarkMode': isOn},
+          SetOptions(merge: true),
+        );
+      } catch (_) {
+        // Se mantiene la preferencia local si Firestore falla.
+      }
     }
+  }
+
+  Future<void> _persistThemePreference(bool isDarkMode) async {
+    final prefs = await _getPreferences();
+    await prefs.setBool(_themePreferenceKey, isDarkMode);
+  }
+
+  Future<SharedPreferences> _getPreferences() async {
+    return _sharedPreferences ?? await SharedPreferences.getInstance();
   }
 }
 

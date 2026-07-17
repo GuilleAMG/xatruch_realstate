@@ -43,7 +43,7 @@ class UserService {
       'dni': dni ?? '',
       'isPremium': false,
       'isAdmin': false,
-      'tier': 'free',
+      'tier': 'Estudiante',
       'premiumSince': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),

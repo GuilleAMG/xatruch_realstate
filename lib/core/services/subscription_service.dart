@@ -50,7 +50,7 @@ class SubscriptionService {
       throw Exception('[SubscriptionService] Usuario no encontrado: $uid');
     }
 
-    final isPremium = newTier != 'free';
+    final isPremium = newTier != 'Estudiante';
 
     final updates = <String, dynamic>{
       'tier': newTier,

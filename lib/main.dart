@@ -10,6 +10,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/notification_service.dart';
 import 'package:xatruch_realstate/core/services/payment_service.dart';
+import 'package:xatruch_realstate/core/services/theme_service.dart';
 import 'package:xatruch_realstate/core/services/user_service.dart';
 import 'package:xatruch_realstate/core/session/session_coordinator.dart';
 import 'package:xatruch_realstate/core/session/session_user.dart';
@@ -133,17 +134,22 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Xatruch Realstate',
-      debugShowCheckedModeBanner: false,
-      navigatorKey: appNavigatorKey,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      home: AuthGate(
-        signedInBuilder: (_) => const MainWrapper(),
-        signedOutBuilder: (_) => const LoginScreen(),
-      ),
+    return AnimatedBuilder(
+      animation: themeService,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Xatruch Realstate',
+          debugShowCheckedModeBanner: false,
+          navigatorKey: appNavigatorKey,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeService.themeMode,
+          home: AuthGate(
+            signedInBuilder: (_) => const MainWrapper(),
+            signedOutBuilder: (_) => const LoginScreen(),
+          ),
+        );
+      },
     );
   }
 }

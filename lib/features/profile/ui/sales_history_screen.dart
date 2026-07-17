@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/property_service.dart';
+import 'package:xatruch_realstate/core/widgets/property_card/property_details.dart';
+import 'package:xatruch_realstate/core/widgets/property_card/property_image_carousel.dart';
+import 'package:xatruch_realstate/core/widgets/property_card/property_price_tag.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
+import 'package:xatruch_realstate/features/properties/ui/property_detail_screen.dart';
 
 class SalesHistoryScreen extends StatelessWidget {
   const SalesHistoryScreen({super.key});
@@ -75,123 +79,97 @@ class SalesHistoryScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final property = properties[index];
               final soldPrice = property.soldPrice ?? property.price;
-              
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+
+              return InkWell(
+                onTap: () async {
+                  await Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => PropertyDetailScreen(property: property),
+                    ),
+                  );
+                },
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  clipBehavior: Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Información de propiedad
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Stack(
                         children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                              image: property.imageUrls.isNotEmpty
-                                  ? DecorationImage(
-                                      image: NetworkImage(property.imageUrls.first),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            child: property.imageUrls.isEmpty
-                                ? const Icon(Icons.home, size: 40)
-                                : null,
+                          PropertyImageCarousel(property: property),
+                          Positioned(
+                            bottom: 12,
+                            left: 12,
+                            child: PropertyPriceTag(price: soldPrice),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  property.title,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on, size: 14, color: Theme.of(context).colorScheme.secondary),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        property.location,
-                                        style: TextStyle(
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          fontSize: 13,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Vendida',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-
-                      // Reporte de venta
-                      const Text(
-                        'Reporte de Venta',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      PropertyDetails(property: property),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Resumen de venta',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 8,
+                              children: [
+                                _SummaryChip(
+                                  icon: Icons.person_outline,
+                                  label: property.buyerName.isNotEmpty ? property.buyerName : 'Sin comprador',
+                                ),
+                                _SummaryChip(
+                                  icon: Icons.attach_money,
+                                  label: currencyFormatter.format(soldPrice),
+                                ),
+                                if (property.soldAt != null)
+                                  _SummaryChip(
+                                    icon: Icons.calendar_today,
+                                    label: dateFormatter.format(property.soldAt!),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      
-                      _buildReportRow(
-                        context,
-                        icon: Icons.person,
-                        label: 'Comprador:',
-                        value: property.buyerName.isNotEmpty ? property.buyerName : 'N/A',
-                      ),
-                      if (property.buyerId.isNotEmpty)
-                        _buildReportRow(
-                          context,
-                          icon: Icons.email,
-                          label: 'Contacto:',
-                          value: property.buyerId,
-                        ),
-                      _buildReportRow(
-                        context,
-                        icon: Icons.attach_money,
-                        label: 'Precio Original:',
-                        value: currencyFormatter.format(property.price),
-                      ),
-                      _buildReportRow(
-                        context,
-                        icon: Icons.sell,
-                        label: 'Precio de Venta:',
-                        value: currencyFormatter.format(soldPrice),
-                        valueStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                      ),
-                      if (property.soldAt != null)
-                        _buildReportRow(
-                          context,
-                          icon: Icons.calendar_today,
-                          label: 'Fecha de Venta:',
-                          value: dateFormatter.format(property.soldAt!),
-                        ),
                     ],
                   ),
                 ),
@@ -203,33 +181,38 @@ class SalesHistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReportRow(BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    TextStyle? valueStyle,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
+          Icon(icon, size: 15, color: colorScheme.primary),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: valueStyle ?? const TextStyle(fontWeight: FontWeight.w400),
-              textAlign: TextAlign.end,
-            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

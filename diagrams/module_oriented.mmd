@@ -1,0 +1,30 @@
+flowchart LR
+  subgraph App["Flutter App"]
+    direction TB
+    UI[UI Layer\ncomponents/ & features/] --> Core[core/ (services, session, theme)]
+    Core --> Data[data/ (repositories, models)]
+    UI --> Data
+  end
+
+  subgraph Integrations["Servicios externos"]
+    direction TB
+    Firebase[FIREBASE\nAuth · Firestore · Storage] 
+    Notifications[Firebase Messaging\nLocal Notifications]
+    RevenueCat[RevenueCat / Purchases]
+    Maps[Google Maps · Geolocator]
+    Crashlytics[Crashlytics]
+    AppCheck[Firebase App Check]
+  end
+
+  App --> Firebase
+  App --> Notifications
+  App --> RevenueCat
+  App --> Maps
+  App --> Crashlytics
+  App --> AppCheck
+
+  Core -->|uses| Firebase
+  Core -->|uses| Notifications
+  Core -->|uses| RevenueCat
+  Data -->|persists| Firebase
+  UI -->|navigation| Core

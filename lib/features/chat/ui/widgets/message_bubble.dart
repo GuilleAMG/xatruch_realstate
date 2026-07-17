@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/chat/data/messages.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
+import 'package:xatruch_realstate/core/services/profile_state_service.dart';
 import 'package:xatruch_realstate/core/widgets/video_player_widget.dart';
 
 /// A single message bubble in the chat room, extracted from ChatRoomScreen.
@@ -152,7 +153,9 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildCurrentUserAvatar() {
-    final photoUrl = authService.currentUser?.photoURL;
+    final photoUrl = profileStateService.photoUrl.isNotEmpty
+        ? profileStateService.photoUrl
+        : authService.currentUser?.photoURL;
     return CircleAvatar(
       radius: 16,
       backgroundColor: const Color(0xFF3F888F),

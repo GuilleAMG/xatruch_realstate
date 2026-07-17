@@ -10,6 +10,7 @@ import 'package:xatruch_realstate/core/services/property_service.dart';
 import 'package:xatruch_realstate/core/services/storage_service.dart';
 import 'package:xatruch_realstate/core/services/payment_service.dart';
 import 'package:xatruch_realstate/core/services/location_service.dart';
+import 'package:xatruch_realstate/core/constants/app_constants.dart';
 
 /// Controlador para la gestión de la lógica de creación/edición de propiedades.
 class CreatePropertyController extends ChangeNotifier {
@@ -30,6 +31,7 @@ class CreatePropertyController extends ChangeNotifier {
   late TextEditingController areaController;
 
   String? selectedDepartment;
+  String? selectedMunicipality;
   String? selectedPropertyType;
 
   final List<XFile> selectedMedia = [];
@@ -53,6 +55,8 @@ class CreatePropertyController extends ChangeNotifier {
     municipalityController = TextEditingController(text: p?.municipality ?? '');
     selectedDepartment =
         p?.department.isNotEmpty == true ? p!.department : null;
+    selectedMunicipality =
+        p?.municipality.isNotEmpty == true ? p!.municipality : null;
     selectedPropertyType =
         p?.propertyType.isNotEmpty == true ? p!.propertyType : null;
     priceController =
@@ -113,6 +117,20 @@ class CreatePropertyController extends ChangeNotifier {
 
   void setDepartment(String? val) {
     selectedDepartment = val;
+    if (val == null || val.isEmpty) {
+      selectedMunicipality = null;
+      municipalityController.clear();
+    } else if (selectedMunicipality != null &&
+        !AppConstants.municipalitiesByDepartment[val]!.contains(selectedMunicipality!)) {
+      selectedMunicipality = null;
+      municipalityController.clear();
+    }
+    notifyListeners();
+  }
+
+  void setMunicipality(String? val) {
+    selectedMunicipality = val;
+    municipalityController.text = val ?? '';
     notifyListeners();
   }
 

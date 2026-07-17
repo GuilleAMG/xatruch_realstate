@@ -5,6 +5,7 @@ import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/subscription_service.dart';
 import 'package:xatruch_realstate/core/services/payment_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:xatruch_realstate/features/profile/ui/widgets/current_plan_header.dart';
 
 import 'package:xatruch_realstate/features/profile/ui/widgets/restore_purchases_button.dart';
@@ -31,7 +32,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Future<void> _loadSubscriptionData() async {
     final user = authService.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
 
     final data = await subscriptionService.getSubscriptionInfo(user.uid);
     final offerings = await paymentService.getOfferings();
@@ -46,38 +54,106 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  Future<void> _purchasePlan(String tier, Package? rcPackage) async {
+  Future<void> _purchasePlan(String tier) async {
     final user = authService.currentUser;
-    if (user == null) return;
-
-    setState(() => _isLoading = true);
-
-    bool success = false;
-    if (rcPackage != null) {
-      success = await paymentService.purchasePackage(rcPackage);
-    } else {
-      // Local fallback si no hay RevenueCat
-      await subscriptionService.updateUserTier(user.uid, tier);
-      success = true;
-    }
-
-    if (success) {
-      await _loadSubscriptionData();
+    if (user == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Suscripción procesada exitosamente'),
-            backgroundColor: Colors.green,
+            content: Text('Debes iniciar sesión para cambiar tu plan.'),
+            backgroundColor: Colors.orange,
           ),
         );
+      }
+      return;
+    }
+
+    if (tier == 'Estudiante' && _currentTier != 'Estudiante') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Confirmar cambio a Estudiante'),
+          content: const Text(
+            '¿Seguro que deseas volver al plan Estudiante? Este cambio no requiere paywall y perderás los beneficios del plan superior, incluyendo el límite de publicaciones y las funciones exclusivas del plan actual.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    if (tier == 'Estudiante') {
+      try {
+        await subscriptionService.updateUserTier(user.uid, tier);
+        await _loadSubscriptionData();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Plan actualizado correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No se pudo actualizar el plan: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    final result = await paymentService.presentPaywall();
+    if (!mounted) return;
+
+    if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+      try {
+        await subscriptionService.updateUserTier(user.uid, tier);
+        await _loadSubscriptionData();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Plan actualizado correctamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No se pudo actualizar el plan: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     } else {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('El pago fue cancelado o hubo un error'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+          const SnackBar(
+            content: Text('La prueba falló o fue cancelada. Intenta de nuevo.'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -157,7 +233,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       config: entry.value,
                       isCurrent: _currentTier == entry.key,
                       rcPackage: rcPackage,
-                      onPurchase: () => _purchasePlan(entry.key, rcPackage),
+                      onPurchase: () => _purchasePlan(entry.key),
                     );
                   }),
                   const SizedBox(height: 24),

@@ -1,0 +1,23 @@
+flowchart TD
+  Mobile[Mobile App (Flutter)]
+  Mobile -->|Auth, DB, Storage| FirebaseAuth[Firebase Auth]
+  Mobile -->|Reads/Writes| Firestore[Cloud Firestore]
+  Mobile -->|Uploads| Storage[Firebase Storage]
+  Mobile -->|Push| FCM[Firebase Messaging]
+  Mobile -->|Crash/Logs| Crashlytics[Crashlytics]
+  Mobile -->|App attestation| AppCheck[Firebase App Check]
+  Mobile -->|Purchases| RevenueCat[RevenueCat / Purchases SDK]
+  Mobile -->|Maps| GoogleMaps[Google Maps / Geolocator]
+
+  subgraph Backend["Optional / Server-side"]
+    CloudFunctions[Cloud Functions\nfunctions/index.js]
+    CloudFunctions --> Firestore
+    CloudFunctions --> Storage
+  end
+
+  Firestore --> Data[(Propiedades, Usuarios, Metadatos)]
+  Storage --> Media[(Fotos / Videos)]
+  FCM --> Mobile
+  RevenueCat -->|Webhooks| CloudFunctions
+
+  note right of Mobile: Proyecto organiza en `lib/core`, `lib/features`, `lib/data`

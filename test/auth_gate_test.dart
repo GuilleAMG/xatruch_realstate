@@ -58,4 +58,23 @@ void main() {
     expect(find.text('SIGNED_IN'), findsOneWidget);
     expect(find.text('SIGNED_OUT'), findsNothing);
   });
+
+  testWidgets('AuthGate shows a clear error state when auth stream fails', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AuthGate(
+          authStateStream: Stream<User?>.error(Exception('Auth unavailable')),
+          signedInBuilder: (_) => const Text('SIGNED_IN'),
+          signedOutBuilder: (_) => const Text('SIGNED_OUT'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('No se pudo verificar el estado de sesión'), findsOneWidget);
+    expect(find.text('SIGNED_OUT'), findsNothing);
+    expect(find.text('SIGNED_IN'), findsNothing);
+  });
 }

@@ -113,6 +113,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                     hasWater: _controller.hasWater,
                     onDepartmentChanged: _controller.setDepartment,
                     onPropertyTypeChanged: _controller.setPropertyType,
+                    onMunicipalityChanged: _controller.setMunicipality,
                     onElectricityChanged: _controller.setElectricity,
                     onWaterChanged: _controller.setWater,
                     requiredValidator: Validators.validateRequired,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/follow_service.dart';
 import 'package:xatruch_realstate/core/services/chat_service.dart';
+import 'package:xatruch_realstate/core/services/profile_state_service.dart';
 import 'package:xatruch_realstate/core/services/user_service.dart';
 import 'package:xatruch_realstate/features/chat/ui/chat_room_screen.dart';
 
@@ -23,36 +24,50 @@ class SellerInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          radius: 20,
-          child: Icon(Icons.person, color: colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                sellerName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+    return ListenableBuilder(
+      listenable: profileStateService,
+      builder: (context, _) {
+        final isCurrentUserSeller = sellerId.isNotEmpty && sellerId == authService.currentUser?.uid;
+        final effectiveSellerName = isCurrentUserSeller
+            ? (profileStateService.displayName.isNotEmpty ? profileStateService.displayName : sellerName)
+            : sellerName;
+        final effectiveAvatar = isCurrentUserSeller ? profileStateService.photoUrl : '';
+
+        return Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              radius: 20,
+              backgroundImage: (effectiveAvatar.isNotEmpty)
+                  ? NetworkImage(effectiveAvatar) as ImageProvider
+                  : null,
+              child: effectiveAvatar.isEmpty
+                  ? Icon(Icons.person, color: colorScheme.onSurfaceVariant)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    effectiveSellerName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    'Vendedor',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                'Vendedor',
-                style: TextStyle(
-                  color: colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (sellerId != authService.currentUser?.uid) ...[
+            ),
+            if (sellerId != authService.currentUser?.uid) ...[
           IconButton(
             onPressed: () async {
               try {
@@ -113,8 +128,10 @@ class SellerInfoSection extends StatelessWidget {
               );
             },
           ),
-        ],
-      ],
+            ],
+          ],
+        );
+      },
     );
   }
 }

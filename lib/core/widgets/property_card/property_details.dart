@@ -2,12 +2,10 @@
 // información del vendedor y botón de contacto dentro de la tarjeta.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
-import 'package:xatruch_realstate/features/chat/ui/chat_room_screen.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/follow_service.dart';
-import 'package:xatruch_realstate/core/services/chat_service.dart';
+import 'package:xatruch_realstate/core/services/profile_state_service.dart';
 import 'package:xatruch_realstate/core/services/user_service.dart';
-import 'package:xatruch_realstate/core/utils/responsive_utils.dart';
 
 class PropertyDetails extends StatelessWidget {
   const PropertyDetails({super.key, required this.property});
@@ -68,46 +66,91 @@ class PropertyDetails extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 4),
-              FutureBuilder<Map<String, dynamic>?>(
-                future: userService.getUsuarioById(property.sellerId),
-                builder: (context, snapshot) {
-                  final sellerData = snapshot.data;
-                  final sellerAvatar = sellerData?['photoUrl'] as String?;
-                  return SizedBox(
-                    width: 32, // Fixed width for avatar
-                    height: 24, // Fixed height
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundImage:
-                              (sellerAvatar != null && sellerAvatar.isNotEmpty)
-                              ? NetworkImage(sellerAvatar) as ImageProvider
-                              : null,
-                          child: (sellerAvatar == null || sellerAvatar.isEmpty)
-                              ? Icon(
-                                  Icons.person,
-                                  size: 16,
+              ListenableBuilder(
+                listenable: profileStateService,
+                builder: (context, _) {
+                  final isCurrentUserSeller = property.sellerId.isNotEmpty &&
+                      property.sellerId == authService.currentUser?.uid;
+
+                  if (isCurrentUserSeller) {
+                    final sellerAvatar = profileStateService.photoUrl;
+                    final sellerName = profileStateService.displayName.isNotEmpty
+                        ? profileStateService.displayName
+                        : property.sellerName;
+
+                    return Expanded(
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundImage: (sellerAvatar.isNotEmpty)
+                                ? NetworkImage(sellerAvatar) as ImageProvider
+                                : null,
+                            child: sellerAvatar.isEmpty
+                                ? Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: colorScheme.onSurfaceVariant,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Vendedor: $sellerName',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return FutureBuilder<Map<String, dynamic>?>(
+                    future: userService.getUsuarioById(property.sellerId),
+                    builder: (context, snapshot) {
+                      final sellerData = snapshot.data;
+                      final sellerAvatar = sellerData?['photoUrl'] as String?;
+                      final sellerName = (sellerData?['nombre'] as String?) ?? property.sellerName;
+                      return Expanded(
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundImage: (sellerAvatar != null && sellerAvatar.isNotEmpty)
+                                  ? NetworkImage(sellerAvatar) as ImageProvider
+                                  : null,
+                              child: (sellerAvatar == null || sellerAvatar.isEmpty)
+                                  ? Icon(
+                                      Icons.person,
+                                      size: 16,
+                                      color: colorScheme.onSurfaceVariant,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Vendedor: $sellerName',
+                                style: TextStyle(
                                   color: colorScheme.onSurfaceVariant,
-                                )
-                              : null,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
-              ),
-              Expanded(
-                child: Text(
-                  'Vendedor: ${property.sellerName}',
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
               if (property.sellerId != authService.currentUser?.uid)
                 StreamBuilder<bool>(
@@ -177,76 +220,6 @@ class PropertyDetails extends StatelessWidget {
                 Colors.blue,
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                if (property.sellerId.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Error: El vendedor no tiene un ID válido.',
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Contactando a ${property.sellerName}...'),
-                  ),
-                );
-
-                try {
-                  final sellerData = await userService.getUsuarioById(
-                    property.sellerId,
-                  );
-                  final String sellerName =
-                      (sellerData?['nombre'] as String?) ?? property.sellerName;
-                  final String sellerAvatar =
-                      (sellerData?['photoUrl'] as String?) ??
-                      'assets/icons/default_avatar.png';
-
-                  final chatId = await chatService.getOrCreateChatRoom(
-                    property.sellerId,
-                    sellerName,
-                    otherUserAvatar: sellerAvatar,
-                  );
-
-                  if (context.mounted) {
-                    await Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => ChatRoomScreen(
-                          chatId: chatId,
-                          otherUserName: sellerName,
-                          otherUserAvatar: sellerAvatar,
-                        ),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al crear chat: $e')),
-                    );
-                  }
-                }
-              },
-              icon: Icon(Icons.message_outlined, size: context.scaledFontSize(18)),
-              label: Text(
-                context.isSmallPhone ? 'Contactar' : 'Contactar Vendedor',
-                style: TextStyle(fontSize: context.scaledFontSize(14)),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  vertical: context.isSmallPhone ? 10 : 14,
-                ),
-              ),
-            ),
           ),
         ],
       ),

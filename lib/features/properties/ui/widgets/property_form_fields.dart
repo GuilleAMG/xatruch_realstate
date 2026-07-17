@@ -22,6 +22,7 @@ class PropertyFormFields extends StatelessWidget {
     required this.hasWater,
     required this.onDepartmentChanged,
     required this.onPropertyTypeChanged,
+    required this.onMunicipalityChanged,
     required this.onElectricityChanged,
     required this.onWaterChanged,
     required this.requiredValidator,
@@ -44,6 +45,7 @@ class PropertyFormFields extends StatelessWidget {
 
   final ValueChanged<String?> onDepartmentChanged;
   final ValueChanged<String?> onPropertyTypeChanged;
+  final ValueChanged<String?> onMunicipalityChanged;
   final ValueChanged<bool> onElectricityChanged;
   final ValueChanged<bool> onWaterChanged;
 
@@ -55,10 +57,12 @@ class PropertyFormFields extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildTextField(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTextField(
           context,
           controller: titleController,
           label: 'Título de la Propiedad',
@@ -104,12 +108,34 @@ class PropertyFormFields extends StatelessWidget {
           validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
         ),
         const SizedBox(height: 16),
-        _buildTextField(
-          context,
-          controller: municipalityController,
-          label: 'Municipio o Ciudad',
-          icon: Icons.location_city_outlined,
-          validator: requiredValidator,
+        DropdownButtonFormField<String>(
+          initialValue: selectedDepartment != null && selectedDepartment!.isNotEmpty
+              ? municipalityController.text.isNotEmpty
+                  ? municipalityController.text
+                  : null
+              : null,
+          decoration: InputDecoration(
+            labelText: 'Municipio o Ciudad',
+            prefixIcon: Icon(Icons.location_city_outlined, color: Theme.of(context).colorScheme.primary),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            hintText: selectedDepartment != null && selectedDepartment!.isNotEmpty
+                ? 'Selecciona un municipio'
+                : 'Primero elige un departamento',
+          ),
+          menuMaxHeight: 220,
+          items: (selectedDepartment != null && selectedDepartment!.isNotEmpty
+                  ? (AppConstants.municipalitiesByDepartment[selectedDepartment] ?? [])
+                  : <String>[])
+              .map((municipality) => DropdownMenuItem(value: municipality, child: Text(municipality)))
+              .toList(),
+          onChanged: selectedDepartment != null && selectedDepartment!.isNotEmpty
+              ? (value) {
+                  municipalityController.text = value ?? '';
+                  onMunicipalityChanged(value);
+                }
+              : null,
+          validator: (val) => val == null || val.isEmpty ? 'Requerido' : null,
         ),
         const SizedBox(height: 16),
         _buildTextField(
@@ -127,6 +153,7 @@ class PropertyFormFields extends StatelessWidget {
           icon: Icons.attach_money,
           keyboardType: TextInputType.number,
           validator: numberValidator,
+          prefixText: 'L ',
         ),
         const SizedBox(height: 16),
         _buildTextField(
@@ -144,7 +171,7 @@ class PropertyFormFields extends StatelessWidget {
               child: _buildTextField(
                 context,
                 controller: bedroomsController,
-                label: 'Dormitorios',
+                label: 'Habitaciones',
                 icon: Icons.king_bed_outlined,
                 keyboardType: TextInputType.number,
                 validator: intValidator,
@@ -167,7 +194,7 @@ class PropertyFormFields extends StatelessWidget {
         _buildTextField(
           context,
           controller: areaController,
-          label: 'Área (m²)',
+          label: 'm² de terreno / m² de construcción',
           icon: Icons.square_foot_outlined,
           keyboardType: TextInputType.number,
           validator: numberValidator,
@@ -219,7 +246,8 @@ class PropertyFormFields extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ),
+  );
   }
 
   Widget _buildTextField(
@@ -229,6 +257,7 @@ class PropertyFormFields extends StatelessWidget {
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    String? prefixText,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -238,6 +267,7 @@ class PropertyFormFields extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        prefixText: prefixText,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
       ),

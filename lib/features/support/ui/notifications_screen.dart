@@ -65,7 +65,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No tienes notificaciones aún',
+            'No tienes notificaciones aún...',
             style: TextStyle(
               fontSize: 18,
               color: Theme.of(context).colorScheme.onSurface,
@@ -74,7 +74,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Te avisaremos cuando suceda algo importante',
+            'Te avisaremos cuando suceda algo importante.',
             style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),

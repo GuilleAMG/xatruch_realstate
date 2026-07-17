@@ -25,19 +25,23 @@ class CurrentPlanHeader extends StatelessWidget {
       _ => colorScheme.primary,
     };
 
+    final effectiveTierColor = tierColor.withValues(alpha: 0.95);
+    final borderColor = tierColor.withValues(alpha: 0.35);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [tierColor, tierColor.withValues(alpha: 0.7)],
+          colors: [effectiveTierColor, tierColor.withValues(alpha: 0.75)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: tierColor.withValues(alpha: 0.3),
+            color: tierColor.withValues(alpha: 0.24),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -61,12 +65,15 @@ class CurrentPlanHeader extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(Icons.post_add, color: Colors.white70, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Publicaciones este mes: $monthlyPosts',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+              Expanded(
+                child: Text(
+                  'Publicaciones este mes: $monthlyPosts',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ],
           ),

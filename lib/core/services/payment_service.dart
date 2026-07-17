@@ -26,6 +26,8 @@ class _RC {
 class PaymentService {
   bool _initialized = false;
 
+  bool get _isRevenueCatSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
   // ── Initialization ────────────────────────────────────────────────────────
 
   /// Public alias used by main.dart.
@@ -34,25 +36,38 @@ class PaymentService {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.error);
-
-    final configuration = PurchasesConfiguration(
-      Platform.isIOS ? _RC.apiKeyIos : _RC.apiKeyAndroid,
-    );
-
-    await Purchases.configure(configuration);
-
-    // Identify with Firebase UID if already logged in.
-    final uid = authService.currentUser?.uid;
-    if (uid != null) {
-      await _identifyUser(uid);
+    if (!_isRevenueCatSupported) {
+      _initialized = true;
+      debugPrint(
+        '[PaymentService] Skipping RevenueCat initialization on unsupported platform',
+      );
+      return;
     }
 
-    // Listen for subscription changes and sync them to Firestore.
-    Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdated);
+    try {
+      await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.error);
 
-    _initialized = true;
-    debugPrint('[PaymentService] Initialized');
+      final configuration = PurchasesConfiguration(
+        Platform.isIOS ? _RC.apiKeyIos : _RC.apiKeyAndroid,
+      );
+
+      await Purchases.configure(configuration);
+
+      // Identify with Firebase UID if already logged in.
+      final uid = authService.currentUser?.uid;
+      if (uid != null) {
+        await _identifyUser(uid);
+      }
+
+      // Listen for subscription changes and sync them to Firestore.
+      Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdated);
+
+      _initialized = true;
+      debugPrint('[PaymentService] Initialized');
+    } catch (e) {
+      _initialized = true;
+      debugPrint('[PaymentService] Initialization skipped due to error: $e');
+    }
   }
 
   // ── Session Coordinator Interface ─────────────────────────────────────────
@@ -63,6 +78,7 @@ class PaymentService {
   /// Called by SessionCoordinator on login.
   /// Logs the user into RevenueCat using their Firebase UID.
   Future<void> bindToSessionUser(SessionUser user) async {
+    if (!_isRevenueCatSupported) return;
     await _identifyUser(user.uid);
   }
 
@@ -70,6 +86,8 @@ class PaymentService {
   /// Called immediately after login to ensure Firestore reflects
   /// the current subscription state without waiting for a webhook.
   Future<void> syncCustomerInfo() async {
+    if (!_isRevenueCatSupported) return;
+
     try {
       final info = await Purchases.getCustomerInfo();
       await _onCustomerInfoUpdated(info);
@@ -91,6 +109,8 @@ class PaymentService {
   }
 
   Future<void> logoutUser() async {
+    if (!_isRevenueCatSupported) return;
+
     try {
       await Purchases.logOut();
       debugPrint('[PaymentService] User logged out of RevenueCat');
@@ -100,6 +120,8 @@ class PaymentService {
   }
 
   Future<void> _identifyUser(String uid) async {
+    if (!_isRevenueCatSupported) return;
+
     try {
       final result = await Purchases.logIn(uid);
       debugPrint(
@@ -113,6 +135,8 @@ class PaymentService {
   // ── Entitlement Checking ──────────────────────────────────────────────────
 
   Future<bool> hasPremium() async {
+    if (!_isRevenueCatSupported) return false;
+
     try {
       final info = await Purchases.getCustomerInfo();
       return _isPremium(info);
@@ -136,6 +160,8 @@ class PaymentService {
   // ── Offerings ─────────────────────────────────────────────────────────────
 
   Future<Offerings?> getOfferings() async {
+    if (!_isRevenueCatSupported) return null;
+
     try {
       return await Purchases.getOfferings();
     } catch (e) {
@@ -145,6 +171,8 @@ class PaymentService {
   }
 
   Future<List<Package>> getAvailablePackages() async {
+    if (!_isRevenueCatSupported) return [];
+
     try {
       final offerings = await Purchases.getOfferings();
       return offerings.current?.availablePackages ?? [];
@@ -159,6 +187,8 @@ class PaymentService {
   /// Purchase a specific package.
   /// Returns true on success, false on cancellation or error.
   Future<bool> purchasePackage(Package package) async {
+    if (!_isRevenueCatSupported) return false;
+
     try {
       // ignore: deprecated_member_use
       final result = await Purchases.purchasePackage(package);
@@ -177,6 +207,8 @@ class PaymentService {
   }
 
   Future<bool> restorePurchases() async {
+    if (!_isRevenueCatSupported) return false;
+
     try {
       final info = await Purchases.restorePurchases();
       return _isPremium(info);
@@ -189,6 +221,8 @@ class PaymentService {
   // ── Paywall Presentation ──────────────────────────────────────────────────
 
   Future<bool> presentPaywallIfNeeded() async {
+    if (!_isRevenueCatSupported) return false;
+
     try {
       final result = await RevenueCatUI.presentPaywallIfNeeded(
         _RC.entitlementPremium,
@@ -202,6 +236,8 @@ class PaymentService {
   }
 
   Future<PaywallResult> presentPaywall() async {
+    if (!_isRevenueCatSupported) return PaywallResult.error;
+
     try {
       return await RevenueCatUI.presentPaywall();
     } catch (e) {
@@ -213,6 +249,8 @@ class PaymentService {
   // ── Customer Center ───────────────────────────────────────────────────────
 
   Future<void> presentCustomerCenter() async {
+    if (!_isRevenueCatSupported) return;
+
     try {
       await RevenueCatUI.presentCustomerCenter();
     } catch (e) {
@@ -223,6 +261,8 @@ class PaymentService {
   // ── Customer Info ─────────────────────────────────────────────────────────
 
   Future<CustomerInfo?> getCustomerInfo() async {
+    if (!_isRevenueCatSupported) return null;
+
     try {
       return await Purchases.getCustomerInfo();
     } catch (e) {
