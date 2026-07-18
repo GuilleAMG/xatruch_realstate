@@ -1,5 +1,4 @@
-// Widget de tarjeta de propiedad: componente reutilizable que muestra la imagen,
-// precio, detalles y acciones de una propiedad en formato de tarjeta.
+// Tarjeta de propiedad.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
 import 'package:xatruch_realstate/features/properties/ui/property_detail_screen.dart';
@@ -56,7 +55,7 @@ class PropertyCard extends StatelessWidget {
                     left: 12,
                     child: PropertyPriceTag(price: property.price),
                   ),
-                  // Menú de acciones (Editar/Eliminar) - SOLO PARA DUEÑOS
+                  // Menú de acciones (Editar/Eliminar)
                   if (property.sellerId == authService.currentUser?.uid)
                     Positioned(
                       top: 12,
@@ -65,7 +64,6 @@ class PropertyCard extends StatelessWidget {
                     ),
                 ],
               ),
-              // Sección de detalles
               PropertyDetails(property: property),
             ],
           ),

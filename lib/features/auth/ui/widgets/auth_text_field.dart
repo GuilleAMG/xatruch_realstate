@@ -34,20 +34,12 @@ class AuthTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       decoration: InputDecoration(
         labelText: labelText,
-        prefixIcon: Icon(
-          prefixIcon,
-          color: colorScheme.primary,
-        ),
+        prefixIcon: Icon(prefixIcon, color: colorScheme.primary),
         suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: colorScheme.primary,
-            width: 2,
-          ),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
         ),
       ),
       validator: validator,

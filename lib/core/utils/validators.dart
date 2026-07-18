@@ -1,7 +1,5 @@
-// Validadores de formularios: funciones de validación reutilizables para
-// correo, contraseña, nombre, DNI hondureño y teléfono.
+// Validadores de formularios.
 class Validators {
-  /// Valida una dirección de correo electrónico.
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Por favor, ingrese su correo electrónico';
@@ -13,7 +11,6 @@ class Validators {
     return null;
   }
 
-  /// Valida una contraseña.
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Por favor, ingrese su contraseña';
@@ -24,7 +21,6 @@ class Validators {
     return null;
   }
 
-  /// Valida un nombre completo.
   static String? validateName(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Por favor, ingrese su nombre';
@@ -40,7 +36,6 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Por favor, ingrese su número de DNI';
     }
-    // Eliminar guiones o espacios si los hay
     final cleanDNI = value.replaceAll(RegExp(r'[-\s]'), '');
     if (cleanDNI.length != 13) {
       return 'El DNI debe tener 13 dígitos';
@@ -51,12 +46,10 @@ class Validators {
     return null;
   }
 
-  /// Valida un número de teléfono.
   static String? validatePhone(String? value) {
     if (value == null || value.isEmpty) {
       return 'Por favor, ingrese su número de teléfono';
     }
-    // Eliminar caracteres especiales
     final cleanPhone = value.replaceAll(RegExp(r'[^\d]'), '');
     if (cleanPhone.length < 8) {
       return 'El teléfono debe tener al menos 8 dígitos';
@@ -64,7 +57,6 @@ class Validators {
     return null;
   }
 
-  /// Valida que la contraseña y su confirmación coincidan.
   static String? validateConfirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
       return 'Por favor, confirme su contraseña';
@@ -81,14 +73,12 @@ class Validators {
     return null;
   }
 
-  /// Valida que un campo contenga un número válido (decimal o entero).
   static String? validateNumber(String? value) {
     if (value == null || value.trim().isEmpty) return 'Este campo es obligatorio';
     if (double.tryParse(value.trim()) == null) return 'Ingrese un número válido';
     return null;
   }
 
-  /// Valida que un campo contenga un número entero válido.
   static String? validateInt(String? value) {
     if (value == null || value.trim().isEmpty) return 'Este campo es obligatorio';
     if (int.tryParse(value.trim()) == null) return 'Ingrese un número entero';

@@ -1,22 +1,20 @@
-// Menú de acciones de propiedad: opciones de editar, eliminar y marcar
-// como vendida, visible solo para el dueño de la propiedad.
+// Menú de acciones de propiedad.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
 import 'package:xatruch_realstate/features/properties/ui/create_property_screen.dart';
 import 'package:xatruch_realstate/core/services/property_service.dart';
 
 class PropertyActionMenu extends StatelessWidget {
-  const PropertyActionMenu({
-    super.key,
-    required this.property,
-  });
+  const PropertyActionMenu({super.key, required this.property});
 
   final Property property;
 
   Future<void> _showMarkAsSoldDialog(BuildContext context) async {
     final buyerNameCtrl = TextEditingController();
     final buyerIdCtrl = TextEditingController();
-    final soldPriceCtrl = TextEditingController(text: property.price.toString());
+    final soldPriceCtrl = TextEditingController(
+      text: property.price.toString(),
+    );
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -28,18 +26,24 @@ class PropertyActionMenu extends StatelessWidget {
             children: [
               TextField(
                 controller: buyerNameCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre del Comprador'),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Comprador',
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: buyerIdCtrl,
-                decoration: const InputDecoration(labelText: 'Email/ID del Comprador (Opcional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Email/ID del Comprador (Opcional)',
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: soldPriceCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Precio Final de Venta'),
+                decoration: const InputDecoration(
+                  labelText: 'Precio Final de Venta',
+                ),
               ),
             ],
           ),
@@ -60,7 +64,8 @@ class PropertyActionMenu extends StatelessWidget {
     if (confirm == true) {
       final buyerName = buyerNameCtrl.text.trim();
       final buyerId = buyerIdCtrl.text.trim();
-      final soldPrice = double.tryParse(soldPriceCtrl.text.trim()) ?? property.price;
+      final soldPrice =
+          double.tryParse(soldPriceCtrl.text.trim()) ?? property.price;
 
       if (buyerName.isEmpty) {
         if (context.mounted) {
@@ -85,9 +90,13 @@ class PropertyActionMenu extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              success ? 'Propiedad marcada como vendida' : 'Error al actualizar',
+              success
+                  ? 'Propiedad marcada como vendida'
+                  : 'Error al actualizar',
             ),
-            backgroundColor: success ? Colors.green : Theme.of(context).colorScheme.error,
+            backgroundColor: success
+                ? Colors.green
+                : Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -111,9 +120,8 @@ class PropertyActionMenu extends StatelessWidget {
             await Navigator.push<void>(
               context,
               MaterialPageRoute<void>(
-                builder: (context) => CreatePropertyScreen(
-                  propertyToEdit: property,
-                ),
+                builder: (context) =>
+                    CreatePropertyScreen(propertyToEdit: property),
               ),
             );
           } else if (value == 'mark_sold') {
@@ -150,7 +158,9 @@ class PropertyActionMenu extends StatelessWidget {
                     content: Text(
                       success ? 'Propiedad eliminada' : 'Error al eliminar',
                     ),
-                    backgroundColor: success ? Colors.green : Theme.of(context).colorScheme.error,
+                    backgroundColor: success
+                        ? Colors.green
+                        : Theme.of(context).colorScheme.error,
                   ),
                 );
               }
@@ -185,10 +195,7 @@ class PropertyActionMenu extends StatelessWidget {
               children: [
                 Icon(Icons.delete, color: colorScheme.error, size: 18),
                 SizedBox(width: 8),
-                Text(
-                  'Eliminar',
-                  style: TextStyle(color: colorScheme.error),
-                ),
+                Text('Eliminar', style: TextStyle(color: colorScheme.error)),
               ],
             ),
           ),

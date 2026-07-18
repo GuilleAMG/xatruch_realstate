@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/utils/responsive_utils.dart';
 
 /// Header reusable para las pantallas de autenticación.
-/// Incluye un icono o imagen, un título y un subtítulo.
 class AuthHeader extends StatelessWidget {
   const AuthHeader({
     super.key,
@@ -26,17 +25,9 @@ class AuthHeader extends StatelessWidget {
     return Column(
       children: [
         if (imagePath != null)
-          Image.asset(
-            imagePath!,
-            color: colorScheme.primary,
-            height: 100,
-          )
+          Image.asset(imagePath!, color: colorScheme.primary, height: 100)
         else if (icon != null)
-          Icon(
-            icon,
-            size: iconSize,
-            color: colorScheme.primary,
-          ),
+          Icon(icon, size: iconSize, color: colorScheme.primary),
         const SizedBox(height: 16),
         Text(
           title,

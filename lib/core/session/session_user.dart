@@ -1,5 +1,4 @@
-// Modelo de usuario de sesión: representa los datos básicos del usuario
-// autenticado (uid, correo, nombre, teléfono) para uso interno.
+// Modelo de usuario de sesión.
 class SessionUser {
   const SessionUser({
     required this.uid,

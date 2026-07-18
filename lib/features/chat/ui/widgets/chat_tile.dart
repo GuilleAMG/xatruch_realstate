@@ -6,11 +6,7 @@ import 'package:xatruch_realstate/core/services/user_service.dart';
 
 /// Un elemento individual en la lista de chats.
 class ChatTile extends StatelessWidget {
-  const ChatTile({
-    super.key,
-    required this.chat,
-    required this.currentUserId,
-  });
+  const ChatTile({super.key, required this.chat, required this.currentUserId});
 
   final Chat chat;
   final String currentUserId;
@@ -30,7 +26,9 @@ class ChatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -47,7 +45,11 @@ class ChatTile extends StatelessWidget {
                   if (chat.pinnedBy.contains(currentUserId))
                     Padding(
                       padding: const EdgeInsets.only(right: 4.0),
-                      child: Icon(Icons.push_pin, size: 16, color: colorScheme.primary),
+                      child: Icon(
+                        Icons.push_pin,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
                     ),
                   Expanded(
                     child: Text(
@@ -67,7 +69,10 @@ class ChatTile extends StatelessWidget {
               chat.lastMessage != null
                   ? _formatTime(chat.lastMessage!.timestamp)
                   : '',
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -132,10 +137,7 @@ class ChatTile extends StatelessWidget {
 }
 
 class _ChatAvatar extends StatelessWidget {
-  const _ChatAvatar({
-    required this.otherUserId,
-    required this.defaultAvatar,
-  });
+  const _ChatAvatar({required this.otherUserId, required this.defaultAvatar});
 
   final String otherUserId;
   final String defaultAvatar;
@@ -147,18 +149,26 @@ class _ChatAvatar extends StatelessWidget {
     return Stack(
       children: [
         FutureBuilder<Map<String, dynamic>?>(
-          future: otherUserId.isNotEmpty ? userService.getUsuarioById(otherUserId) : Future.value(null),
+          future: otherUserId.isNotEmpty
+              ? userService.getUsuarioById(otherUserId)
+              : Future.value(null),
           builder: (context, snapshot) {
             final userData = snapshot.data;
             final currentAvatar = userData?['photoUrl'] as String?;
-            final avatarToUse = (currentAvatar != null && currentAvatar.isNotEmpty) ? currentAvatar : defaultAvatar;
-            
-            final hasNetworkImage = avatarToUse.isNotEmpty && !avatarToUse.startsWith('assets');
+            final avatarToUse =
+                (currentAvatar != null && currentAvatar.isNotEmpty)
+                ? currentAvatar
+                : defaultAvatar;
+
+            final hasNetworkImage =
+                avatarToUse.isNotEmpty && !avatarToUse.startsWith('assets');
 
             return CircleAvatar(
               radius: 28,
               backgroundColor: const Color(0xFF3F888F),
-              backgroundImage: hasNetworkImage ? NetworkImage(avatarToUse) : null,
+              backgroundImage: hasNetworkImage
+                  ? NetworkImage(avatarToUse)
+                  : null,
               child: !hasNetworkImage
                   ? Image.asset(
                       'assets/icons/default_avatar.png',
@@ -188,10 +198,7 @@ class _ChatAvatar extends StatelessWidget {
 }
 
 class _ChatTileMenu extends StatelessWidget {
-  const _ChatTileMenu({
-    required this.chat,
-    required this.currentUserId,
-  });
+  const _ChatTileMenu({required this.chat, required this.currentUserId});
 
   final Chat chat;
   final String currentUserId;
@@ -214,7 +221,9 @@ class _ChatTileMenu extends StatelessWidget {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Eliminar chat'),
-              content: const Text('¿Estás seguro de que quieres eliminar este chat? Esta acción no se puede deshacer.'),
+              content: const Text(
+                '¿Estás seguro de que quieres eliminar este chat? Esta acción no se puede deshacer.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -222,13 +231,15 @@ class _ChatTileMenu extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, true),
-                  style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.error,
+                  ),
                   child: const Text('Eliminar'),
                 ),
               ],
             ),
           );
-          
+
           if (confirm == true) {
             await chatService.deleteChat(chat.id);
           }
@@ -237,13 +248,16 @@ class _ChatTileMenu extends StatelessWidget {
       itemBuilder: (BuildContext context) {
         final isPinned = chat.pinnedBy.contains(currentUserId);
         final isArchived = chat.archivedBy.contains(currentUserId);
-        
+
         return [
           PopupMenuItem<String>(
             value: 'pin',
             child: Row(
               children: [
-                Icon(isPinned ? Icons.push_pin_outlined : Icons.push_pin, size: 20),
+                Icon(
+                  isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(isPinned ? 'Desfijar' : 'Fijar'),
               ],

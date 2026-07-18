@@ -1,5 +1,4 @@
-// Controlador de inicio de sesion: gestiona el estado del formulario de login,
-// validacion de campos y manejo de errores de autenticacion.
+// Controlador de inicio de sesion.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
@@ -31,7 +30,6 @@ class LoginController extends ChangeNotifier {
     if (!_isDisposed) notifyListeners();
   }
 
-  /// Intenta iniciar sesión y retorna true si fue exitoso.
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     _setError(null);

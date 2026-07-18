@@ -1,5 +1,4 @@
-// Pantalla de registro: formulario para crear una nueva cuenta
-// con nombre, correo, DNI, telefono y contrasena.
+// Pantalla de registro.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/auth/ui/login_screen.dart';
@@ -71,9 +70,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
           await Navigator.pushReplacement<void, void>(
             context,
-            MaterialPageRoute<void>(
-              builder: (context) => const LoginScreen(),
-            ),
+            MaterialPageRoute<void>(builder: (context) => const LoginScreen()),
           );
         }
       } on FirebaseAuthException catch (e) {

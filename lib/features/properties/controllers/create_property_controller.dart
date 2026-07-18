@@ -97,9 +97,6 @@ class CreatePropertyController extends ChangeNotifier {
       return;
     }
     try {
-      // Check entitlement directly instead of calling syncCustomerInfo,
-      // which belongs to the SessionCoordinator lifecycle only.
-      // hasPremium() fetches fresh CustomerInfo from RevenueCat internally.
       final isPremium = await paymentService.hasPremium();
       debugPrint('[CreatePropertyController] isPremium: $isPremium');
 

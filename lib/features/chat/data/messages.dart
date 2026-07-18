@@ -1,5 +1,4 @@
-// Modelos de datos de chat: define las clases Message y Chat
-// para representar mensajes y salas de conversacion.
+// Modelos de datos de chat.
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Message {
@@ -34,7 +33,7 @@ class Message {
   final String content;
   final DateTime timestamp;
   final bool isMe;
-  final String type; // 'text', 'image', 'video'
+  final String type;
   final String? mediaUrl;
 
   Map<String, dynamic> toMap() {
@@ -65,13 +64,14 @@ class Chat {
     String docId,
     String currentUserId,
   ) {
-    final participants = List<String>.from((map['participants'] as Iterable?) ?? []);
+    final participants = List<String>.from(
+      (map['participants'] as Iterable?) ?? [],
+    );
     final otherUserId = participants.firstWhere(
       (id) => id != currentUserId,
       orElse: () => '',
     );
 
-    // Usar una forma más segura de convertir mapas desde Firestore
     final participantNames =
         (map['participantNames'] as Map?)?.map(
           (k, v) => MapEntry(k.toString(), v.toString()),

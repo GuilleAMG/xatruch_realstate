@@ -1,5 +1,4 @@
-// Servicio de almacenamiento: sube archivos multimedia a Firebase Storage
-// para propiedades y chats, y retorna las URLs de descarga.
+// Servicio de almacenamiento.
 import 'dart:io';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -8,11 +7,8 @@ import 'package:flutter/foundation.dart';
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // ─────────────────────────────────────────────
-  //  Firebase Storage (Subida de multimedia)
-  // ─────────────────────────────────────────────
+  // ──── Subida de multimedia Firebase Storage ─────────────────────────────────────────────
 
-  /// Sube un archivo individual a Firebase Storage y retorna la URL de descarga.
   Future<String> uploadFile(File file, String storagePath) async {
     try {
       final ref = _storage.ref().child(storagePath);
@@ -25,7 +21,6 @@ class StorageService {
     }
   }
 
-  /// Sube múltiples archivos multimedia de una propiedad y retorna sus URLs de descarga.
   Future<List<String>> uploadPropertyMedia(
     List<File> files,
     String propertyId,
@@ -41,7 +36,6 @@ class StorageService {
     return downloadUrls;
   }
 
-  /// Sube un archivo multimedia para un chat y retorna la URL de descarga.
   Future<String> uploadChatMedia(File file, String chatId) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final extension = file.path.split('.').last;

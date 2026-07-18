@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// Widget para la entrada de mensajes en el chat.
-/// Incluye campo de texto, botón de adjuntos y botón de envío.
 class ChatInput extends StatelessWidget {
   const ChatInput({
     super.key,

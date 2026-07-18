@@ -1,5 +1,4 @@
-// Coordinador de sesión: orquesta la sincronización de servicios (push tokens,
-// pagos, comercio) cuando el estado de autenticación cambia.
+// Coordinador de sesión.
 import 'package:xatruch_realstate/core/session/session_user.dart';
 
 class SessionCoordinator {

@@ -1,5 +1,4 @@
-// Servicio de reportes: permite a los usuarios enviar reportes sobre
-// propiedades, mensajes u otros usuarios a la colección de Firestore.
+// Servicio de reportes.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xatruch_realstate/features/support/data/report.dart';
@@ -8,7 +7,6 @@ import 'package:xatruch_realstate/core/services/auth_service.dart';
 class ReportService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Crea un nuevo reporte y lo guarda en la colección 'reportes' de Firestore.
   Future<bool> submitReport({
     required String reportedId,
     String? reportedUserId,
@@ -23,7 +21,7 @@ class ReportService {
       }
 
       final report = Report(
-        id: '', // Será asignado por Firestore
+        id: '', 
         reporterId: user.uid,
         reportedId: reportedId,
         reportedUserId: reportedUserId,

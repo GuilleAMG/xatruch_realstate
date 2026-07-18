@@ -1,5 +1,4 @@
-// Servicio de propiedades: CRUD de propiedades en Firestore, control de límites
-// por suscripción, marcado como vendida y notificaciones a seguidores.
+// Servicio de propiedades.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
@@ -12,44 +11,47 @@ import 'package:xatruch_realstate/core/services/notification_data_service.dart';
 class PropertyService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ─────────────────────────────────────────────
-  // SUBSCRIPTION LIMIT HELPERS
-  // ─────────────────────────────────────────────
+  // ─────── Limites por Suscripción ─────────────────────────────────────────────
 
+  /// Obtiene el límite de publicaciones mensuales del usuario y cuántas
+  /// lleva publicadas este mes, para decidir si puede seguir publicando.
   Future<({int limit, int currentCount})> _getPostLimitInfo(
     String userId,
   ) async {
     final userDoc = await _db.collection('usuarios').doc(userId).get();
     final data = userDoc.data();
 
-    final firestoreTier = (data?['tier'] as String?) ?? 'free';
+    // Nombre de plan tal como está guardado en Firestore; 'Estudiante'
+    // (plan gratis) si el documento no existe o el campo no fue seteado.
+    final tier = (data?['tier'] as String?) ?? 'Estudiante';
     final currentCount = (data?['monthlyPostsCount'] as int?) ?? 0;
 
-    final displayName = _firestoreTierToDisplayName(firestoreTier);
-    final tierConfig = SubscriptionService.subscriptionTiers[displayName];
+    final tierConfig = SubscriptionService.subscriptionTiers[tier];
+    // 0 publicaciones permitidas si el plan no está configurado.
     final limit = (tierConfig?['postsPerMonth'] as int?) ?? 0;
 
     return (limit: limit, currentCount: currentCount);
   }
 
-  String _firestoreTierToDisplayName(String firestoreTier) {
-    return switch (firestoreTier) {
-      'monthly'     => 'Residente',
-      'three_month' => 'Inversionista',
-      'six_month'   => 'Inversionista',
-      'yearly'      => 'Empresario',
-      _             => 'Estudiante',
+  /// Determina cuántos meses debe durar visible una publicación
+  /// según el tier del vendedor (no confundir con el límite mensual
+  /// de publicaciones — esto controla expiresAt, no monthlyPostsCount).
+  int _expirationMonthsForTier(String tier) {
+    return switch (tier) {
+      'Residente' => 3,
+      'Inversionista' => 6,
+      'Empresario' => 12,
+      _ => 1, // 'Estudiante' u otro valor no reconocido
     };
   }
 
-  // ─────────────────────────────────────────────
-  // PROPERTIES (Propiedades)
-  // ─────────────────────────────────────────────
+  // ───── Propiedades ─────────────────────────────────────────────
 
-  /// Verifica si el usuario puede publicar una nueva propiedad.
+  /// Verificación de límite standalone — actualmente deshabilitada:
+  /// el `return` temprano hace que el resto del método sea código
+  /// muerto (por eso el `// ignore: dead_code`). No se usa desde
+  /// `addProperty`, que tiene su propia verificación inline más abajo.
   Future<void> checkPostLimit(String userId) async {
-    // Temporarily disabled: allow all authenticated users to publish
-    // regardless of their subscription tier or monthly post count.
     return;
 
     // ignore: dead_code
@@ -61,8 +63,7 @@ class PropertyService {
     }
   }
 
-  /// Retorna un stream en tiempo real de todas las propiedades ordenadas por fecha,
-  /// filtrando las expiradas.
+  /// Retorna una lista de todas las propiedades.
   Stream<List<Property>> getProperties() {
     return _db
         .collection('propiedades')
@@ -81,29 +82,26 @@ class PropertyService {
         );
   }
 
-  /// Retorna las propiedades vendidas de un vendedor específico.
+  /// Retorna la lista de propiedades vendidas.
   Stream<List<Property>> getSoldPropertiesList(String sellerId) {
     return _db
         .collection('propiedades')
         .where('sellerId', isEqualTo: sellerId)
         .where('isSold', isEqualTo: true)
         .snapshots()
-        .map(
-          (snapshot) {
-            final list = snapshot.docs
-                .map((doc) => Property.fromMap(doc.data(), doc.id))
-                .toList();
-            list.sort((a, b) {
-              final dateA = a.soldAt ?? DateTime(2000);
-              final dateB = b.soldAt ?? DateTime(2000);
-              return dateB.compareTo(dateA);
-            });
-            return list;
-          },
-        );
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => Property.fromMap(doc.data(), doc.id))
+              .toList();
+          list.sort((a, b) {
+            final dateA = a.soldAt ?? DateTime(2000);
+            final dateB = b.soldAt ?? DateTime(2000);
+            return dateB.compareTo(dateA);
+          });
+          return list;
+        });
   }
 
-  /// Marca una propiedad como vendida con información del comprador y precio.
   Future<bool> markAsSold({
     required String propertyId,
     required String buyerName,
@@ -131,47 +129,46 @@ class PropertyService {
       final user = authService.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      // Subscription limit check temporarily disabled.
-      // final (:limit, :currentCount) = await _getPostLimitInfo(user.uid);
-      // if (limit != 999 && currentCount >= limit) {
-      //   throw Exception(
-      //     'Has alcanzado el límite de publicaciones mensuales para tu plan.',
-      //   );
-      // }
+      final userDoc = await _db.collection('usuarios').doc(user.uid).get();
+      final userData = userDoc.data();
+      final tier = (userData?['tier'] as String?) ?? 'Estudiante';
+      final currentCount = (userData?['monthlyPostsCount'] as int?) ?? 0;
 
-      // Expiration: base duration on tier.
-      final firestoreTier = (await _db
-              .collection('usuarios')
-              .doc(user.uid)
-              .get())
-          .data()?['tier'] as String? ??
-          'free';
-      final durationMonths = _expirationMonthsForTier(firestoreTier);
-      final expiresAt =
-          DateTime.now().add(Duration(days: 30 * durationMonths));
+      // Verificación de límite de suscripción — ACTIVA.
+      // Si el usuario ya alcanzó su cupo mensual de publicaciones
+      // (según su tier), se bloquea la creación con una excepción.
+      // limit == 999 se trata como "ilimitado" y nunca bloquea.
+      final tierConfig = SubscriptionService.subscriptionTiers[tier];
+      final limit = (tierConfig?['postsPerMonth'] as int?) ?? 0;
+      if (limit != 999 && currentCount >= limit) {
+        throw Exception(
+          'Has alcanzado el límite de publicaciones mensuales para tu plan.',
+        );
+      }
+
+      final durationMonths = _expirationMonthsForTier(tier);
+      final now = DateTime.now();
+      final expiresAt = DateTime(now.year, now.month + durationMonths, now.day);
 
       final propertyData = property.toMap();
       propertyData['expiresAt'] = expiresAt.toIso8601String();
       propertyData['sellerId'] = user.uid;
 
-      final DocumentReference docRef =
-          await _db.collection('propiedades').add(propertyData);
+      final DocumentReference docRef = await _db
+          .collection('propiedades')
+          .add(propertyData);
       final propertyId = docRef.id;
 
-      // Increment monthly post count.
       await _db.collection('usuarios').doc(user.uid).update({
         'monthlyPostsCount': FieldValue.increment(1),
       });
 
-      // Notify followers.
       try {
         final sellerId = property.sellerId;
         if (sellerId.isNotEmpty) {
           final followers = await followService.getFollowerIds(sellerId);
-          final currentUserDoc =
-              await _db.collection('usuarios').doc(sellerId).get();
-          final sellerName = (currentUserDoc.data()?['nombre'] as String?) ??
-              'Un vendedor que sigues';
+          final sellerName =
+              (userData?['nombre'] as String?) ?? 'Un vendedor que sigues';
 
           for (final followerId in followers) {
             await notificationDataService.sendNotification(
@@ -184,8 +181,7 @@ class PropertyService {
                 type: 'new_post',
                 relatedId: propertyId,
                 senderName: sellerName,
-                senderPhoto:
-                    currentUserDoc.data()?['photoUrl'] as String?,
+                senderPhoto: userData?['photoUrl'] as String?,
               ),
             );
           }
@@ -201,17 +197,7 @@ class PropertyService {
     }
   }
 
-  int _expirationMonthsForTier(String firestoreTier) {
-    return switch (firestoreTier) {
-      'monthly'     => 1,
-      'three_month' => 3,
-      'six_month'   => 6,
-      'yearly'      => 12,
-      _             => 1,
-    };
-  }
-
-  /// Actualiza un documento de propiedad existente en Firestore.
+  /// Actualiza una propiedad existente.
   Future<bool> updateProperty(Property property) async {
     try {
       await _db
@@ -229,10 +215,10 @@ class PropertyService {
   Future<bool> deleteProperty(String id) async {
     try {
       try {
-        final propertyDoc =
-            await _db.collection('propiedades').doc(id).get();
+        final propertyDoc = await _db.collection('propiedades').doc(id).get();
         if (propertyDoc.exists) {
-          final propertyTitle = (propertyDoc.data()?['title'] as String?) ??
+          final propertyTitle =
+              (propertyDoc.data()?['title'] as String?) ??
               'una propiedad que te gusta';
 
           final favoritersQuery = await _db

@@ -1,5 +1,4 @@
-// Carrusel de imágenes de propiedad: muestra las fotos de la propiedad
-// en un PageView con indicadores de puntos.
+// Carrusel de imágenes de propiedad.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
 

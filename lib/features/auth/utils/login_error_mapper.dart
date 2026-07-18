@@ -1,5 +1,4 @@
-// Mapeador de errores de login: convierte codigos de error de Firebase Auth
-// en mensajes amigables para el usuario en espanol.
+// Mapeador de errores de login.
 import 'package:firebase_auth/firebase_auth.dart';
 
 String mapLoginError(FirebaseAuthException exception) {

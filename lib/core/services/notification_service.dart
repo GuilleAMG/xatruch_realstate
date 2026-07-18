@@ -1,5 +1,4 @@
-// Servicio de notificaciones push: inicialización de FCM, permisos,
-// manejo de mensajes en primer plano/segundo plano y enrutamiento por notificación.
+// Servicio de notificaciones push.
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,7 +13,6 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  /// Se invoca cuando el usuario toca una notificación (segundo plano/terminada/reanudada).
   void Function(RemoteMessage message)? onNotificationTap;
 
   Future<void> initialize() async {
@@ -23,29 +21,27 @@ class NotificationService {
             defaultTargetPlatform == TargetPlatform.linux ||
             defaultTargetPlatform == TargetPlatform.macOS)) {
       debugPrint(
-          'Push notifications are not configured for desktop platforms yet. Skipping initialization.');
+        'Push notifications are not configured for desktop platforms yet. Skipping initialization.',
+      );
       return;
     }
 
-    // 1. Manejar mensajes en segundo plano
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // 2. Inicializar notificaciones locales
     const AndroidInitializationSettings androidInitSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings iosInitSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        );
     const InitializationSettings initSettings = InitializationSettings(
       android: androidInitSettings,
       iOS: iosInitSettings,
     );
     await _localNotifications.initialize(settings: initSettings);
 
-    // 3. Crear canal de notificaciones Android (necesario para notificaciones emergentes en API 26+)
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
       'High Importance Notifications',
@@ -55,26 +51,25 @@ class NotificationService {
 
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
-    // 4. Actualizar opciones de presentación de notificaciones en iOS para primer plano
     await _fcm.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    // 5. Escuchar mensajes en primer plano
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final RemoteNotification? notification = message.notification;
       final AndroidNotification? android = message.notification?.android;
 
-      // Verificar preferencia del usuario antes de mostrar notificación local
       final enabled = await isNotificationsEnabled();
       if (!enabled) {
         debugPrint(
-            'Notifications disabled for user, skipping foreground notification');
+          'Notifications disabled for user, skipping foreground notification',
+        );
         return;
       }
 
@@ -95,7 +90,6 @@ class NotificationService {
       }
     });
 
-    // 6. Manejar app abierta desde notificación en segundo plano/terminada
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('FCM onMessageOpenedApp: ${message.messageId}');
       if (onNotificationTap != null) {
@@ -103,7 +97,6 @@ class NotificationService {
       }
     });
 
-    // 7. Capturar mensaje inicial cuando la app se abre desde estado terminado
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       debugPrint('FCM getInitialMessage: ${initialMessage.messageId}');
@@ -123,7 +116,6 @@ class NotificationService {
       return false;
     }
     try {
-      // 1. Verificar/Solicitar permiso de plataforma (Android/iOS)
       final NotificationSettings settings = await _fcm.requestPermission(
         alert: true,
         badge: true,
@@ -132,13 +124,10 @@ class NotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         debugPrint('User granted notification permission');
-
-        // 2. Solicitar permiso explícito de POST_NOTIFICATIONS para Android 13+
         if (defaultTargetPlatform == TargetPlatform.android) {
           final status = await Permission.notification.request();
           return status.isGranted;
         }
-
         return true;
       } else {
         debugPrint('User declined or has not accepted notification permission');
@@ -190,16 +179,14 @@ class NotificationService {
     }
   }
 
-  /// Verifica si las notificaciones están habilitadas para el usuario actual.
   Future<bool> isNotificationsEnabled() async {
     final user = await userService.getUsuarioById(
-        FirebaseAuth.instance.currentUser?.uid ?? '');
-    return (user?['notificationsEnabled'] as bool?) ??
-        true; // Por defecto true si no está configurado
+      FirebaseAuth.instance.currentUser?.uid ?? '',
+    );
+    return (user?['notificationsEnabled'] as bool?) ?? true;
   }
 
   /// Maneja el enrutamiento al tocar una notificación según los datos del mensaje.
-  /// Retorna la info de ruta destino: {'index': int, 'itemId': String?, 'model': String?}
   static Map<String, dynamic> parseNotificationRoute(RemoteMessage message) {
     final data = message.data;
     final route = data['route']?.toString().toLowerCase();
@@ -228,10 +215,7 @@ class NotificationService {
   }
 }
 
-// Manejador de mensajes en segundo plano a nivel superior.
-// Se ejecuta en un isolate separado — Firebase debe inicializarse aquí también.
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // ✅ Guard: el isolate de background no comparte estado con el isolate principal
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -268,7 +252,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
             android: AndroidNotificationDetails(
               'high_importance_channel',
               'High Importance Notifications',
-              channelDescription: 'Este canal se usa para notificaciones importantes.',
+              channelDescription:
+                  'Este canal se usa para notificaciones importantes.',
               importance: Importance.max,
               priority: Priority.high,
               icon: '@mipmap/ic_launcher',

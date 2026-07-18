@@ -1,9 +1,7 @@
-// Widget de reproductor de video: reproduce videos desde URL con autoplay y loop.
+// Widget de reproductor de video.
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-/// Widget independiente de reproductor de video, extraído de ChatRoomScreen.
-/// Inicializa un video desde una URL de red y lo reproduce automáticamente en bucle.
 class VideoPlayerWidget extends StatefulWidget {
   const VideoPlayerWidget({super.key, required this.url});
   final String url;

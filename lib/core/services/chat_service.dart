@@ -1,5 +1,4 @@
-// Servicio de chat: gestiona salas de conversación, envío de mensajes,
-// notificaciones de chat y operaciones de gestión (fijar, archivar, eliminar).
+// Servicio de chat: envío de mensajes, notificaciones de chat y operaciones de gestión (fijar, archivar, eliminar).
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xatruch_realstate/features/chat/data/messages.dart';
@@ -10,22 +9,14 @@ import 'package:xatruch_realstate/core/services/notification_data_service.dart';
 class ChatService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ─────────────────────────────────────────────
-  //  Mensajería
-  // ─────────────────────────────────────────────
-
-  /// Obtiene o crea una sala de chat entre el usuario actual y [otherUserId].
   Future<String> getOrCreateChatRoom(
     String otherUserId,
-    String otherUserName,
-    {
-      String? otherUserAvatar,
-    }
-  ) async {
+    String otherUserName, {
+    String? otherUserAvatar,
+  }) async {
     final currentUser = authService.currentUser;
     if (currentUser == null) throw Exception('User not logged in');
 
-    // ID determinístico simple para chats 1 a 1
     final List<String> participants = [currentUser.uid, otherUserId];
     participants.sort();
     final chatId = participants.join('_');
@@ -34,21 +25,27 @@ class ChatService {
     final chatDoc = await chatRef.get();
 
     if (!chatDoc.exists) {
-      // Obtener detalles del usuario actual para el documento del chat
       final currentUserDoc = await _db
           .collection('usuarios')
           .doc(currentUser.uid)
           .get();
-      final currentUserName = (currentUserDoc.data()?['nombre'] as String?) ?? 'Usuario';
+      final currentUserName =
+          (currentUserDoc.data()?['nombre'] as String?) ?? 'Usuario';
       final currentUserAvatar =
           (currentUserDoc.data()?['photoUrl'] as String?) ??
           'assets/icons/default_avatar.png';
 
-      String resolvedOtherAvatar = otherUserAvatar ?? 'assets/icons/default_avatar.png';
+      String resolvedOtherAvatar =
+          otherUserAvatar ?? 'assets/icons/default_avatar.png';
 
       if (otherUserAvatar == null) {
-        final otherUserDoc = await _db.collection('usuarios').doc(otherUserId).get();
-        resolvedOtherAvatar = (otherUserDoc.data()?['photoUrl'] as String?) ?? 'assets/icons/default_avatar.png';
+        final otherUserDoc = await _db
+            .collection('usuarios')
+            .doc(otherUserId)
+            .get();
+        resolvedOtherAvatar =
+            (otherUserDoc.data()?['photoUrl'] as String?) ??
+            'assets/icons/default_avatar.png';
       }
 
       await chatRef.set({
@@ -77,9 +74,7 @@ class ChatService {
 
     final WriteBatch batch = _db.batch();
     for (final doc in querySnapshot.docs) {
-      batch.update(doc.reference, {
-        'participantAvatars.$userId': avatarUrl,
-      });
+      batch.update(doc.reference, {'participantAvatars.$userId': avatarUrl});
     }
 
     if (querySnapshot.docs.isNotEmpty) {
@@ -87,7 +82,7 @@ class ChatService {
     }
   }
 
-  /// Envía un mensaje en una sala de chat específica.
+  /// Envía un mensaje en un chat específico.
   Future<void> sendMessage(
     String chatId,
     String content, {
@@ -107,7 +102,7 @@ class ChatService {
 
     final batch = _db.batch();
 
-    // Agregar mensaje a la subcolección
+    // Agregar mensaje a la subcolección.
     final messageRef = _db
         .collection('chats')
         .doc(chatId)
@@ -115,7 +110,6 @@ class ChatService {
         .doc();
     batch.set(messageRef, messageData);
 
-    // Actualizar el último mensaje en el documento del chat
     batch.update(_db.collection('chats').doc(chatId), {
       'lastMessage': messageData,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -123,7 +117,7 @@ class ChatService {
 
     await batch.commit();
 
-    // Enviar notificación al destinatario
+    // Enviar notificación al destinatario.
     try {
       final chatDoc = await _db.collection('chats').doc(chatId).get();
       if (chatDoc.exists) {
@@ -140,7 +134,8 @@ class ChatService {
               .collection('usuarios')
               .doc(user.uid)
               .get();
-          final currentUserName = (currentUserDoc.data()?['nombre'] as String?) ?? 'Usuario';
+          final currentUserName =
+              (currentUserDoc.data()?['nombre'] as String?) ?? 'Usuario';
 
           await notificationDataService.sendNotification(
             AppNotification(
@@ -162,7 +157,7 @@ class ChatService {
     }
   }
 
-  /// Retorna un stream de mensajes para una sala de chat.
+  /// Retorna la lista de mensajes para un chat.
   Stream<List<Message>> getMessages(String chatId) {
     final user = authService.currentUser;
     if (user == null) return Stream.value([]);
@@ -180,21 +175,17 @@ class ChatService {
         );
   }
 
-  // ─────────────────────────────────────────────
-  //  Gestión de Chats
-  // ─────────────────────────────────────────────
-
   Future<void> pinChat(String chatId, bool isPinned) async {
     final user = authService.currentUser;
     if (user == null) return;
-    
+
     if (isPinned) {
       await _db.collection('chats').doc(chatId).update({
-        'pinnedBy': FieldValue.arrayUnion([user.uid])
+        'pinnedBy': FieldValue.arrayUnion([user.uid]),
       });
     } else {
       await _db.collection('chats').doc(chatId).update({
-        'pinnedBy': FieldValue.arrayRemove([user.uid])
+        'pinnedBy': FieldValue.arrayRemove([user.uid]),
       });
     }
   }
@@ -202,15 +193,17 @@ class ChatService {
   Future<void> archiveChat(String chatId, bool isArchived) async {
     final user = authService.currentUser;
     if (user == null) return;
-    
+
     if (isArchived) {
       await _db.collection('chats').doc(chatId).update({
         'archivedBy': FieldValue.arrayUnion([user.uid]),
-        'pinnedBy': FieldValue.arrayRemove([user.uid]), // Desfijar si se archiva
+        'pinnedBy': FieldValue.arrayRemove([
+          user.uid,
+        ]), // Desfijar si se archiva
       });
     } else {
       await _db.collection('chats').doc(chatId).update({
-        'archivedBy': FieldValue.arrayRemove([user.uid])
+        'archivedBy': FieldValue.arrayRemove([user.uid]),
       });
     }
   }
@@ -218,13 +211,13 @@ class ChatService {
   Future<void> deleteChat(String chatId) async {
     final user = authService.currentUser;
     if (user == null) return;
-    
+
     await _db.collection('chats').doc(chatId).update({
-      'deletedBy': FieldValue.arrayUnion([user.uid])
+      'deletedBy': FieldValue.arrayUnion([user.uid]),
     });
   }
 
-  /// Retorna un stream de salas de chat del usuario actual.
+  /// Retorna la lista de chats del usuario actual.
   Stream<List<Chat>> getChatRooms() {
     final user = authService.currentUser;
     if (user == null) return Stream.value([]);
@@ -239,7 +232,6 @@ class ChatService {
               .where((chat) => !chat.deletedBy.contains(user.uid))
               .toList();
 
-          // Ordenamiento del lado del cliente como respaldo más resistente
           chats.sort((a, b) {
             final aTime = a.lastMessage?.timestamp ?? DateTime(2000);
             final bTime = b.lastMessage?.timestamp ?? DateTime(2000);

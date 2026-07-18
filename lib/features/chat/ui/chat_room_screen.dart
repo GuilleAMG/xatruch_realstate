@@ -1,5 +1,4 @@
-// Pantalla de sala de chat: interfaz de conversacion en tiempo real
-// con envio de texto, imagenes, videos y grabacion de audio.
+// Pantalla de chat.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -193,7 +192,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 }
                 return MessageList(
                   messages: snapshot.data ?? [],
-                  otherUserAvatar: _currentOtherUserAvatar ?? widget.otherUserAvatar,
+                  otherUserAvatar:
+                      _currentOtherUserAvatar ?? widget.otherUserAvatar,
                 );
               },
             ),
@@ -217,17 +217,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 }
 
 class _ChatAppBarTitle extends StatelessWidget {
-  const _ChatAppBarTitle({
-    required this.avatarUrl,
-    required this.name,
-  });
+  const _ChatAppBarTitle({required this.avatarUrl, required this.name});
 
   final String avatarUrl;
   final String name;
 
   @override
   Widget build(BuildContext context) {
-    final hasNetworkImage = avatarUrl.isNotEmpty && !avatarUrl.startsWith('assets');
+    final hasNetworkImage =
+        avatarUrl.isNotEmpty && !avatarUrl.startsWith('assets');
 
     return Row(
       children: [

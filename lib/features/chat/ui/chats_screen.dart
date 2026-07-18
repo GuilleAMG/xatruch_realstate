@@ -1,5 +1,4 @@
-// Pantalla de lista de chats: muestra todas las conversaciones
-// del usuario con opciones de fijar, archivar y eliminar.
+// Pantalla de lista de chats.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/chat/data/messages.dart';
 import 'package:xatruch_realstate/core/services/chat_service.dart';
@@ -29,7 +28,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_showArchived ? 'Mensajes Archivados' : 'Mensajes'),
@@ -47,7 +46,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
           ChatSearchBar(
             controller: _searchController,
             showClearButton: _searchQuery.isNotEmpty,
-            onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+            onChanged: (value) =>
+                setState(() => _searchQuery = value.toLowerCase()),
             onClear: () {
               _searchController.clear();
               setState(() => _searchQuery = '');
@@ -57,13 +57,22 @@ class _ChatsScreenState extends State<ChatsScreen> {
             child: StreamBuilder<List<Chat>>(
               stream: chatService.getChatRooms(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return _buildErrorState(snapshot.error.toString(), colorScheme);
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) {
+                  return _buildErrorState(
+                    snapshot.error.toString(),
+                    colorScheme,
+                  );
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
                 final currentUserId = authService.currentUser!.uid;
                 final chats = _processChats(snapshot.data ?? [], currentUserId);
 
-                if (chats.isEmpty) return ChatEmptyState(isSearch: _searchQuery.isNotEmpty);
+                if (chats.isEmpty) {
+                  return ChatEmptyState(isSearch: _searchQuery.isNotEmpty);
+                }
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -90,17 +99,21 @@ class _ChatsScreenState extends State<ChatsScreen> {
     chats.sort((a, b) {
       final aPinned = a.pinnedBy.contains(currentUserId);
       final bPinned = b.pinnedBy.contains(currentUserId);
-      
+
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
-      
+
       final aTime = a.lastMessage?.timestamp ?? DateTime(2000);
       final bTime = b.lastMessage?.timestamp ?? DateTime(2000);
       return bTime.compareTo(aTime);
     });
 
     if (_searchQuery.isNotEmpty) {
-      chats = chats.where((chat) => chat.otherUserName.toLowerCase().contains(_searchQuery)).toList();
+      chats = chats
+          .where(
+            (chat) => chat.otherUserName.toLowerCase().contains(_searchQuery),
+          )
+          .toList();
     }
 
     return chats;
@@ -115,9 +128,19 @@ class _ChatsScreenState extends State<ChatsScreen> {
           children: [
             Icon(Icons.error_outline, size: 48, color: colorScheme.error),
             const SizedBox(height: 16),
-            const Text('Error al cargar conversaciones', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Error al cargar conversaciones',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
-            Text(error, textAlign: TextAlign.center, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
       ),

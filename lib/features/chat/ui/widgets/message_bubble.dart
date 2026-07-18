@@ -1,13 +1,10 @@
-// Widget de burbuja de mensaje: renderiza cada mensaje individual
-// con formato visual segun si es enviado o recibido.
+// Widget de burbuja de mensaje
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/chat/data/messages.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 import 'package:xatruch_realstate/core/services/profile_state_service.dart';
 import 'package:xatruch_realstate/core/widgets/video_player_widget.dart';
 
-/// A single message bubble in the chat room, extracted from ChatRoomScreen.
-/// Supports text, image, and video message types with full-screen media view.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
@@ -26,7 +23,9 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -40,7 +39,9 @@ class MessageBubble extends StatelessWidget {
                 maxWidth: MediaQuery.of(context).size.width * 0.65,
               ),
               decoration: BoxDecoration(
-                color: isMe ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+                color: isMe
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -66,16 +67,17 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            _buildCurrentUserAvatar(),
-          ],
+          if (isMe) ...[const SizedBox(width: 8), _buildCurrentUserAvatar()],
         ],
       ),
     );
   }
 
-  Widget _buildMessageContent(BuildContext context, bool isMe, ColorScheme colorScheme) {
+  Widget _buildMessageContent(
+    BuildContext context,
+    bool isMe,
+    ColorScheme colorScheme,
+  ) {
     if (message.type == 'text') {
       return Text(
         message.content,
@@ -86,7 +88,8 @@ class MessageBubble extends StatelessWidget {
       );
     } else if (message.type == 'image' && message.mediaUrl != null) {
       return GestureDetector(
-        onTap: () async => await _showFullScreenMedia(context, message.mediaUrl!, 'image'),
+        onTap: () async =>
+            await _showFullScreenMedia(context, message.mediaUrl!, 'image'),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
@@ -104,7 +107,8 @@ class MessageBubble extends StatelessWidget {
       );
     } else if (message.type == 'video' && message.mediaUrl != null) {
       return GestureDetector(
-        onTap: () async => await _showFullScreenMedia(context, message.mediaUrl!, 'video'),
+        onTap: () async =>
+            await _showFullScreenMedia(context, message.mediaUrl!, 'video'),
         child: Container(
           height: 150,
           width: double.infinity,
@@ -113,7 +117,11 @@ class MessageBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Center(
-            child: Icon(Icons.play_circle_outline, color: Colors.white, size: 50),
+            child: Icon(
+              Icons.play_circle_outline,
+              color: Colors.white,
+              size: 50,
+            ),
           ),
         ),
       );
@@ -121,7 +129,11 @@ class MessageBubble extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  Future<void> _showFullScreenMedia(BuildContext context, String url, String type) async {
+  Future<void> _showFullScreenMedia(
+    BuildContext context,
+    String url,
+    String type,
+  ) async {
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
@@ -132,7 +144,9 @@ class MessageBubble extends StatelessWidget {
             iconTheme: const IconThemeData(color: Colors.white),
           ),
           body: Center(
-            child: type == 'image' ? Image.network(url) : VideoPlayerWidget(url: url),
+            child: type == 'image'
+                ? Image.network(url)
+                : VideoPlayerWidget(url: url),
           ),
         ),
       ),
@@ -147,7 +161,11 @@ class MessageBubble extends StatelessWidget {
           ? NetworkImage(avatarUrl) as ImageProvider
           : null,
       child: (avatarUrl.isEmpty || avatarUrl.startsWith('assets'))
-          ? Image.asset('assets/icons/default_avatar.png', color: Colors.white, width: 20)
+          ? Image.asset(
+              'assets/icons/default_avatar.png',
+              color: Colors.white,
+              width: 20,
+            )
           : null,
     );
   }
@@ -163,7 +181,11 @@ class MessageBubble extends StatelessWidget {
           ? NetworkImage(photoUrl) as ImageProvider
           : null,
       child: (photoUrl == null || photoUrl.isEmpty)
-          ? Image.asset('assets/icons/default_avatar.png', color: Colors.white, width: 20)
+          ? Image.asset(
+              'assets/icons/default_avatar.png',
+              color: Colors.white,
+              width: 20,
+            )
           : null,
     );
   }

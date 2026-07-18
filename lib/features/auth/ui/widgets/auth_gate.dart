@@ -9,7 +9,6 @@ class AuthGate extends StatelessWidget {
     required this.signedOutBuilder,
   });
 
-  /// Inyectable para tests. En producción se usa FirebaseAuth.instance.
   final Stream<User?>? authStateStream;
 
   final WidgetBuilder signedInBuilder;
@@ -38,7 +37,10 @@ class AuthGate extends StatelessWidget {
                     const SizedBox(height: 12),
                     const Text(
                       'No se pudo verificar el estado de sesión',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),

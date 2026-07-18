@@ -1,18 +1,14 @@
-// Servicio de favoritos: gestiona las propiedades marcadas como favoritas
-// por cada usuario, incluyendo notificaciones al vendedor.
+// Servicio de favoritos,
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xatruch_realstate/features/support/data/notification.dart';
 import 'package:xatruch_realstate/core/services/notification_data_service.dart';
 
-/// Gestiona los favoritos de propiedades por usuario.
 class FavoriteService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Alterna una propiedad como favorita para el usuario actual.
-  /// Envía una notificación al vendedor cuando se agrega un favorito.
   Future<void> toggleFavorite(String propertyId) async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -67,7 +63,7 @@ class FavoriteService {
     }
   }
 
-  /// Retorna un stream en tiempo real de los IDs de propiedades favoritas del usuario actual.
+  /// Retorna una lista de las propiedades favoritas.
   Stream<Set<String>> getFavoriteIds() {
     return _auth.authStateChanges().asyncExpand((User? user) {
       if (user == null) return Stream.value(<String>{});
@@ -80,7 +76,6 @@ class FavoriteService {
     });
   }
 
-  /// Retorna un stream que indica si una propiedad específica es favorita del usuario actual.
   Stream<bool> isFavorite(String propertyId) {
     return _auth.authStateChanges().asyncExpand((User? user) {
       if (user == null) return Stream.value(false);

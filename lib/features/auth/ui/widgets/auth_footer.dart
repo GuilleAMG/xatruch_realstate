@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Footer con un link de navegación para las pantallas de autenticación.
+/// Link de navegación para las pantallas de autenticación.
 class AuthFooter extends StatelessWidget {
   const AuthFooter({
     super.key,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Botón principal para acciones de autenticación con estado de carga.
+/// Botón principal de autenticación.
 class AuthButton extends StatelessWidget {
   const AuthButton({
     super.key,

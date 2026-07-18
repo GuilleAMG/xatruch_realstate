@@ -1,5 +1,4 @@
-// Servicio de tema: gestiona el modo claro/oscuro de la aplicación,
-// usando persistencia local y sincronizando la preferencia del usuario con Firestore.
+// Servicio de tema oscuro y claro.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,9 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
 
 class ThemeService extends ChangeNotifier {
-  ThemeService({SharedPreferences? sharedPreferences, FirebaseFirestore? firestore})
-      : _sharedPreferences = sharedPreferences,
-        _firestore = firestore ?? FirebaseFirestore.instance {
+  ThemeService({
+    SharedPreferences? sharedPreferences,
+    FirebaseFirestore? firestore,
+  }) : _sharedPreferences = sharedPreferences,
+       _firestore = firestore ?? FirebaseFirestore.instance {
     unawaited(_initTheme());
     authService.authStateChanges.listen((user) {
       if (user != null) {
@@ -56,9 +57,7 @@ class ThemeService extends ChangeNotifier {
         await _persistThemePreference(isDark);
         notifyListeners();
       }
-    } catch (_) {
-      // Se mantiene el valor local si Firestore no está disponible.
-    }
+    } catch (_) {}
   }
 
   Future<void> toggleTheme(bool isOn) async {
@@ -69,13 +68,10 @@ class ThemeService extends ChangeNotifier {
     final user = authService.currentUser;
     if (user != null) {
       try {
-        await _firestore.collection('usuarios').doc(user.uid).set(
-          {'isDarkMode': isOn},
-          SetOptions(merge: true),
-        );
-      } catch (_) {
-        // Se mantiene la preferencia local si Firestore falla.
-      }
+        await _firestore.collection('usuarios').doc(user.uid).set({
+          'isDarkMode': isOn,
+        }, SetOptions(merge: true));
+      } catch (_) {}
     }
   }
 

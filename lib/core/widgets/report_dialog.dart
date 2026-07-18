@@ -1,5 +1,4 @@
-// Diálogo de reporte: permite al usuario reportar propiedades, mensajes
-// u otros usuarios seleccionando un motivo y agregando una descripción.
+// Diálogo de reportes.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/services/report_service.dart';
 
@@ -13,9 +12,14 @@ class ReportDialog extends StatefulWidget {
 
   final String reportedId;
   final String? reportedUserId;
-  final String reportType; // 'property', 'message', 'user'
+  final String reportType;
 
-  static Future<void> show(BuildContext context, {required String reportedId, String? reportedUserId, required String reportType}) async {
+  static Future<void> show(
+    BuildContext context, {
+    required String reportedId,
+    String? reportedUserId,
+    required String reportType,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -63,7 +67,8 @@ class _ReportDialogState extends State<ReportDialog> {
       return;
     }
 
-    if (_selectedReason == 'Otro' && _descriptionController.text.trim().isEmpty) {
+    if (_selectedReason == 'Otro' &&
+        _descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Por favor, describe el motivo del reporte.'),
@@ -92,11 +97,13 @@ class _ReportDialogState extends State<ReportDialog> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success 
-              ? 'Reporte enviado. Nuestro equipo lo revisará pronto.' 
+          success
+              ? 'Reporte enviado. Nuestro equipo lo revisará pronto.'
               : 'Error al enviar el reporte. Inténtalo de nuevo.',
         ),
-        backgroundColor: success ? Colors.green : Theme.of(context).colorScheme.error,
+        backgroundColor: success
+            ? Colors.green
+            : Theme.of(context).colorScheme.error,
       ),
     );
   }
@@ -134,35 +141,45 @@ class _ReportDialogState extends State<ReportDialog> {
           const SizedBox(height: 8),
           Text(
             'Ayúdanos a mantener una comunidad segura. Selecciona el motivo del reporte:',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8.0,
             runSpacing: 8.0,
-            children: _reasons.map((reason) => ChoiceChip(
-              label: Text(reason),
-              selected: _selectedReason == reason,
-              selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-              labelStyle: TextStyle(
-                color: _selectedReason == reason
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).colorScheme.onSurface,
-                fontWeight: _selectedReason == reason ? FontWeight.bold : FontWeight.normal,
-              ),
-              side: BorderSide(
-                color: _selectedReason == reason
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).colorScheme.outlineVariant,
-              ),
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedReason = reason;
-                  });
-                }
-              },
-            )).toList(),
+            children: _reasons
+                .map(
+                  (reason) => ChoiceChip(
+                    label: Text(reason),
+                    selected: _selectedReason == reason,
+                    selectedColor: Theme.of(
+                      context,
+                    ).colorScheme.error.withValues(alpha: 0.1),
+                    labelStyle: TextStyle(
+                      color: _selectedReason == reason
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: _selectedReason == reason
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                    side: BorderSide(
+                      color: _selectedReason == reason
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedReason = reason;
+                        });
+                      }
+                    },
+                  ),
+                )
+                .toList(),
           ),
           if (_selectedReason == 'Otro') ...[
             const SizedBox(height: 16),

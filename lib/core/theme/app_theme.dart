@@ -1,5 +1,4 @@
-// Definición del tema de la aplicación: configura los temas claro y oscuro
-// con Material 3, colores personalizados, estilos de barra y campos de entrada.
+// Definición del tema de la aplicación (Claro u Oscuro).
 import 'package:flutter/material.dart';
 
 class AppTheme {

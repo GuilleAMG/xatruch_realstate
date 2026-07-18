@@ -1,5 +1,4 @@
-// Pantalla de inicio de sesion: interfaz para que el usuario ingrese
-// sus credenciales y acceda a la aplicacion.
+// Pantalla de inicio de sesion.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/auth/ui/recovery_screen.dart';
 import 'package:xatruch_realstate/features/auth/ui/register_screen.dart';

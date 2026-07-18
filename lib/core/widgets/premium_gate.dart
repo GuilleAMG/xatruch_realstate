@@ -1,6 +1,4 @@
-// lib/core/widgets/premium_gate.dart
-// Wraps any widget with an entitlement check.
-// If the user is not premium, tapping shows the RC paywall.
+// Si el usuario no es premium, al tocar se muestra el paywall de RevenueCat.
 
 import 'package:flutter/material.dart';
 import '../services/payment_service.dart';
@@ -12,10 +10,8 @@ class PremiumGate extends StatelessWidget {
     this.onUnlocked,
   });
 
-  /// The widget to show (button, card, etc.)
   final Widget child;
 
-  /// Optional callback fired after a successful purchase/restore.
   final VoidCallback? onUnlocked;
 
   @override
@@ -27,7 +23,6 @@ class PremiumGate extends StatelessWidget {
 
         if (isPremium) return child;
 
-        // Non-premium: intercept tap and show paywall instead.
         return GestureDetector(
           onTap: () async {
             final unlocked = await paymentService.presentPaywallIfNeeded();

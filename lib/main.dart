@@ -1,5 +1,3 @@
-// Punto de entrada de la aplicación: configura Firebase, RevenueCat,
-// y el sistema de navegación global.
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +31,7 @@ final sessionCoordinator = SessionCoordinator(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Guard para evitar la FirebaseException [core/duplicate-app]
+  // Guard para evitar sesiones duplicadas
   if (Firebase.apps.isEmpty) { 
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -47,10 +45,9 @@ void main() async {
     providerApple: kDebugMode
         ? AppleDebugProvider()
         : AppleDeviceCheckProvider(),
-  // providerWeb: ReCaptchaV3Provider('RECAPTCHA_SITE_KEY'),
   );
 
-  // Configurar Crashlytics para captura global de errores solo en plataformas soportadas
+  // Configurar Crashlytics para capturar errores solo en plataformas soportadas
   if (!kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS)) {
@@ -128,7 +125,6 @@ void main() async {
     }
   }());
 }
-
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
@@ -138,7 +134,7 @@ class MainApp extends StatelessWidget {
       animation: themeService,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Xatruch Realstate',
+          title: 'Xatruch Bienes Raíces',
           debugShowCheckedModeBanner: false,
           navigatorKey: appNavigatorKey,
           theme: AppTheme.lightTheme,

@@ -1,11 +1,10 @@
-// Central RevenueCat SDK wrapper.
-// Handles: initialization, offerings, purchases, restore, entitlement checking.
-// Works alongside subscription_service.dart (Firestore sync)
+// Wrapper central del SDK de RevenueCat. Funciona junto con subscription_service.dart (sincronización con Firestore)
 
 import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
@@ -13,24 +12,22 @@ import 'auth_service.dart';
 import 'package:xatruch_realstate/core/services/subscription_service.dart';
 import 'package:xatruch_realstate/core/session/session_user.dart';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
+// ─── Constantes de Revenue Cat ───────────────────────────────────────────────────────────────
 class _RC {
   static const String apiKeyAndroid = 'test_YAzKFOjtPqPWvPJStLuEgFawovL';
   static const String apiKeyIos = 'test_YAzKFOjtPqPWvPJStLuEgFawovL';
   static const String entitlementPremium = 'Xatruch Realstate Premium';
 }
 
-// ─── Service ─────────────────────────────────────────────────────────────────
-
+// ─── Servicios ─────────────────────────────────────────────────────────────────
 class PaymentService {
   bool _initialized = false;
 
-  bool get _isRevenueCatSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+  bool get _isRevenueCatSupported =>
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
-  // ── Initialization ────────────────────────────────────────────────────────
+  // ── Inicialización ────────────────────────────────────────────────────────
 
-  /// Public alias used by main.dart.
   Future<void> init() => initialize();
 
   Future<void> initialize() async {
@@ -53,13 +50,13 @@ class PaymentService {
 
       await Purchases.configure(configuration);
 
-      // Identify with Firebase UID if already logged in.
+      // Identifica con el UID de Firebase si ya inició sesión.
       final uid = authService.currentUser?.uid;
       if (uid != null) {
         await _identifyUser(uid);
       }
 
-      // Listen for subscription changes and sync them to Firestore.
+      // Escucha cambios de suscripción y los sincroniza con Firestore.
       Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdated);
 
       _initialized = true;
@@ -70,21 +67,13 @@ class PaymentService {
     }
   }
 
-  // ── Session Coordinator Interface ─────────────────────────────────────────
-  // These three methods are called exclusively by SessionCoordinator
-  // in main.dart. Do NOT also call loginUser() from auth_service —
-  // the coordinator already handles the full lifecycle.
-
-  /// Called by SessionCoordinator on login.
-  /// Logs the user into RevenueCat using their Firebase UID.
+  /// Inicia sesión del usuario en RevenueCat usando su UID de Firebase.
   Future<void> bindToSessionUser(SessionUser user) async {
     if (!_isRevenueCatSupported) return;
     await _identifyUser(user.uid);
   }
 
-  /// Forces a fresh CustomerInfo fetch and syncs it to Firestore.
-  /// Called immediately after login to ensure Firestore reflects
-  /// the current subscription state without waiting for a webhook.
+  /// Fuerza una obtención fresca de CustomerInfo y la sincroniza con Firestore.
   Future<void> syncCustomerInfo() async {
     if (!_isRevenueCatSupported) return;
 
@@ -96,13 +85,10 @@ class PaymentService {
     }
   }
 
-  /// Called by SessionCoordinator on logout.
-  /// Logs the user out of RevenueCat.
+  /// Cierra la sesión del usuario en RevenueCat.
   Future<void> clearCommerceSession() async {
     await logoutUser();
   }
-
-  // ── User Identity ─────────────────────────────────────────────────────────
 
   Future<void> loginUser(String uid) async {
     await _identifyUser(uid);
@@ -132,8 +118,7 @@ class PaymentService {
     }
   }
 
-  // ── Entitlement Checking ──────────────────────────────────────────────────
-
+  // ── Verificación de Entitlements (Privilegios) ──────────────────────────────────────────
   Future<bool> hasPremium() async {
     if (!_isRevenueCatSupported) return false;
 
@@ -157,8 +142,7 @@ class PaymentService {
     return info.entitlements.active.containsKey(_RC.entitlementPremium);
   }
 
-  // ── Offerings ─────────────────────────────────────────────────────────────
-
+  // ── Ofertas ──────────────────────────────────────────────────────────────
   Future<Offerings?> getOfferings() async {
     if (!_isRevenueCatSupported) return null;
 
@@ -182,23 +166,22 @@ class PaymentService {
     }
   }
 
-  // ── Purchases ─────────────────────────────────────────────────────────────
+  // ── Compras ──────────────────────────────────────────────────────────────
 
-  /// Purchase a specific package.
-  /// Returns true on success, false on cancellation or error.
   Future<bool> purchasePackage(Package package) async {
     if (!_isRevenueCatSupported) return false;
 
     try {
-      // ignore: deprecated_member_use
-      final result = await Purchases.purchasePackage(package);
+      final purchaseParams = PurchaseParams.package(package);
+      final result = await Purchases.purchase(purchaseParams);
       return _isPremium(result.customerInfo);
-    } on PurchasesErrorCode catch (e) {
-      if (e == PurchasesErrorCode.purchaseCancelledError) {
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
         debugPrint('[PaymentService] Purchase cancelled by user');
         return false;
       }
-      debugPrint('[PaymentService] purchasePackage error: $e');
+      debugPrint('[PaymentService] purchasePackage error: $errorCode');
       return false;
     } catch (e) {
       debugPrint('[PaymentService] purchasePackage unexpected error: $e');
@@ -218,7 +201,7 @@ class PaymentService {
     }
   }
 
-  // ── Paywall Presentation ──────────────────────────────────────────────────
+  // ── Paywall de RevenueCat ──────────────────────────────────────────────────
 
   Future<bool> presentPaywallIfNeeded() async {
     if (!_isRevenueCatSupported) return false;
@@ -246,7 +229,7 @@ class PaymentService {
     }
   }
 
-  // ── Customer Center ───────────────────────────────────────────────────────
+  // ── Centro de Clientes ───────────────────────────────────────────────────────
 
   Future<void> presentCustomerCenter() async {
     if (!_isRevenueCatSupported) return;
@@ -258,7 +241,7 @@ class PaymentService {
     }
   }
 
-  // ── Customer Info ─────────────────────────────────────────────────────────
+  // ── Información de Clientes ─────────────────────────────────────────────────────────
 
   Future<CustomerInfo?> getCustomerInfo() async {
     if (!_isRevenueCatSupported) return null;
@@ -271,7 +254,7 @@ class PaymentService {
     }
   }
 
-  // ── Internal: Firestore Sync ──────────────────────────────────────────────
+  // ── Interno: Sincronización con Firestore ──────────────────────────────────────────────
 
   final _customerInfoController = StreamController<CustomerInfo>.broadcast();
 
@@ -281,7 +264,6 @@ class PaymentService {
     final uid = authService.currentUser?.uid;
     if (uid == null) return;
 
-    // Extract just the entitlement keys — EntitlementInfo has no toJson().
     final activeEntitlements = Map<String, dynamic>.fromEntries(
       info.entitlements.active.keys.map((key) => MapEntry(key, true)),
     );

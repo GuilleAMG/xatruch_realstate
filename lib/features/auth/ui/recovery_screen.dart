@@ -1,5 +1,4 @@
-// Pantalla de recuperacion de contrasena: permite al usuario solicitar
-// un correo de restablecimiento de contrasena.
+// Pantalla de recuperacion de contraseña.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
@@ -47,8 +46,8 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Go back to login
+                  Navigator.pop(context);
+                  Navigator.pop(context);
                 },
                 child: const Text('ACEPTAR'),
               ),
@@ -105,7 +104,8 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                   icon: Icons.lock_reset_rounded,
                   iconSize: 100,
                   title: '¿Olvidaste tu contraseña?',
-                  subtitle: 'Ingresa tu correo electrónico y te enviaremos un enlace para que puedas volver a entrar a tu cuenta.',
+                  subtitle:
+                      'Ingresa tu correo electrónico y te enviaremos un enlace para que puedas volver a entrar a tu cuenta.',
                 ),
                 const SizedBox(height: 48),
 
@@ -115,8 +115,14 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                   prefixIcon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Por favor ingresa tu correo';
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Ingresa un correo válido';
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingresa tu correo';
+                    }
+                    if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(value)) {
+                      return 'Ingresa un correo válido';
+                    }
                     return null;
                   },
                 ),

@@ -1,9 +1,9 @@
-// Utilidades de diseño responsivo: breakpoints y constantes de espaciado
+// Utilidades de diseño responsive.
 import 'package:flutter/material.dart';
 
 class Breakpoints {
   static const double mobile = 0;
-  static const double tablet = 600; // ancho típico de tablet en píxeles lógicos
+  static const double tablet = 600; // ancho típico de tablet
   static const double desktop = 1024; // preparado para escritorio
 }
 
@@ -13,7 +13,6 @@ bool isTablet(BuildContext context) =>
 bool isDesktop(BuildContext context) =>
     MediaQuery.of(context).size.width >= Breakpoints.desktop;
 
-/// Constantes auxiliares de espaciado que se adaptan al tamaño del dispositivo.
 class Spacing {
   static double horizontal(BuildContext context) =>
       isTablet(context) ? 24.0 : 16.0;

@@ -1,5 +1,4 @@
-// subscription_service.dart
-// Syncs RevenueCat subscription state into the Firestore usuarios document.
+// Servicio de Suscripcion
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -9,10 +8,6 @@ class SubscriptionService {
 
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
       _db.collection('usuarios').doc(uid);
-
-  // ─────────────────────────────────────────────
-  // READ
-  // ─────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getSubscriptionInfo(String uid) async {
     final snapshot = await _userDoc(uid).get();
@@ -26,10 +21,6 @@ class SubscriptionService {
     };
   }
 
-  // ─────────────────────────────────────────────
-  // WRITE
-  // ─────────────────────────────────────────────
-
   Future<void> updateUserTier(String uid, String newTier) async {
     // Guard 1: verify the caller is authenticated
     final currentUser = _auth.currentUser;
@@ -37,7 +28,6 @@ class SubscriptionService {
       throw Exception('[SubscriptionService] Usuario no autenticado al actualizar tier');
     }
 
-    // Guard 2: verify the caller owns this document
     if (currentUser.uid != uid) {
       throw Exception(
         '[SubscriptionService] UID mismatch: '
@@ -68,15 +58,8 @@ class SubscriptionService {
       updates['premiumSince'] = null;
     }
 
-    // Use update() instead of set(..., merge: true) since we verified
-    // the document exists above. This ensures Firestore evaluates the
-    // operation as an UPDATE (not a CREATE), satisfying security rules.
     await _userDoc(uid).update(updates);
   }
-
-  // ─────────────────────────────────────────────
-  // ENTITLEMENT KEY → TIER STRING
-  // ─────────────────────────────────────────────
 
   static String resolveTierFromEntitlements(
     Map<String, dynamic> activeEntitlements,
@@ -88,13 +71,6 @@ class SubscriptionService {
     return 'free';
   }
 
-  // ─────────────────────────────────────────────
-  // TIER DISPLAY CONFIG (used by subscription_screen.dart
-  // and property_service.dart)
-  // ─────────────────────────────────────────────
-
-  /// Keyed by display name to match _tierStyle() in SubscriptionTierCard.
-  /// postsPerMonth: 999 = unlimited (Empresario).
   static const Map<String, Map<String, dynamic>> subscriptionTiers = {
     'Estudiante': {
       'price': 0,

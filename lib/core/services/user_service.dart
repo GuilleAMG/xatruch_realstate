@@ -1,26 +1,17 @@
-// Handles all Firestore operations related to the usuarios collection.
-// On user creation, writes the default role/tier fields required by
-// the Firestore security rules (isPremium, isAdmin, tier, premiumSince).
+// Servicios de Usuario.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
-import 'package:xatruch_realstate/features/profile/data/user.dart' as user_model;
+import 'package:xatruch_realstate/features/profile/data/user.dart'
+    as user_model;
 
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
 
-  // ─────────────────────────────────────────────
-  // DOCUMENT REFERENCE HELPERS
-  // ─────────────────────────────────────────────
-
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) =>
       _db.collection('usuarios').doc(uid);
-
-  // ─────────────────────────────────────────────
-  // CREATE USER DOCUMENT ON REGISTRATION
-  // ─────────────────────────────────────────────
 
   Future<void> createUserDocument({
     required String uid,
@@ -48,17 +39,15 @@ class UserService {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'fcmToken': '',
-      // ── Preferences ─────────────────────────────
+      // ── Preferencias ─────────────────────────────
       'notificationsEnabled': true,
       'locationEnabled': false,
-      // ── Account ──────────────────────────────────
+      // ── Borrar Cuenta ──────────────────────────────────
       'scheduledForDeletion': false,
       'deletionScheduledAt': null,
     });
   }
 
-  /// Alias used by register_screen.dart and profile_controller.dart.
-  /// Delegates to [createUserDocument].
   Future<void> addUserProfile({
     required String uid,
     required String nombre,
@@ -66,23 +55,17 @@ class UserService {
     String? photoUrl,
     String? telefono,
     String? dni,
-  }) =>
-      createUserDocument(
-        uid: uid,
-        nombre: nombre,
-        email: email,
-        photoUrl: photoUrl,
-        telefono: telefono,
-        dni: dni,
-      );
+  }) => createUserDocument(
+    uid: uid,
+    nombre: nombre,
+    email: email,
+    photoUrl: photoUrl,
+    telefono: telefono,
+    dni: dni,
+  );
 
-  // ─────────────────────────────────────────────
-  // FCM TOKEN
-  // ─────────────────────────────────────────────
+  // ───── TOKEN FCM ─────────────────────────────────────────────
 
-  /// Saves the FCM token for the current user.
-  /// Uses merge:true to safely write even if the user document
-  /// hasn't been fully created yet (e.g. race condition on first login).
   Future<void> saveFcmToken(String token) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
@@ -99,13 +82,10 @@ class UserService {
       debugPrint('[UserService] ✅ FCM token saved for user $uid');
     } catch (e) {
       debugPrint('[UserService] ❌ Error saving FCM token: $e');
-      rethrow; // Re-throw so caller can handle or log
+      rethrow;
     }
   }
 
-  /// Clears the FCM token on logout so the user stops
-  /// receiving push notifications on this device.
-  /// Uses merge:true for the same safety reason as [saveFcmToken].
   Future<void> clearFcmToken() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
@@ -122,13 +102,8 @@ class UserService {
       debugPrint('[UserService] ✅ FCM token cleared for user $uid');
     } catch (e) {
       debugPrint('[UserService] ❌ Error clearing FCM token: $e');
-      // Don't rethrow on logout - just log the error
     }
   }
-
-  // ─────────────────────────────────────────────
-  // READ USER DATA (COMPLETE USER MODEL)
-  // ─────────────────────────────────────────────
 
   Future<user_model.User?> getUser(String uid) async {
     try {
@@ -148,8 +123,6 @@ class UserService {
     });
   }
 
-  /// Alias para obtener datos del usuario como Map (usado por legacy code).
-  /// Retorna los datos crudos del documento para acceso por índice.
   Future<Map<String, dynamic>?> getUsuarioById(String uid) async {
     try {
       final snapshot = await _userDoc(uid).get();
@@ -161,10 +134,6 @@ class UserService {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // UPDATE USER (COMPLETE USER MODEL)
-  // ─────────────────────────────────────────────
-
   Future<void> updateUser(user_model.User user) async {
     try {
       await _userDoc(user.uid).update(user.toMap());
@@ -173,10 +142,6 @@ class UserService {
       rethrow;
     }
   }
-
-  // ─────────────────────────────────────────────
-  // UPDATE PROFILE (owner-only fields)
-  // ─────────────────────────────────────────────
 
   Future<void> updateProfile({
     required String uid,
@@ -197,11 +162,6 @@ class UserService {
     await _userDoc(uid).update(updates);
   }
 
-  // ─────────────────────────────────────────────
-  // PREFERENCES
-  // ─────────────────────────────────────────────
-
-  /// Toggles push notification preference for the current user.
   Future<void> updateNotificationPreference({
     required String uid,
     required bool enabled,
@@ -212,7 +172,6 @@ class UserService {
     });
   }
 
-  /// Toggles location sharing preference for the current user.
   Future<void> updateLocationPreference({
     required String uid,
     required bool enabled,
@@ -223,12 +182,6 @@ class UserService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // ACCOUNT DELETION
-  // ─────────────────────────────────────────────
-
-  /// Marks the account for deletion after a grace period.
-  /// Actual deletion should be handled by a Cloud Function.
   Future<void> scheduleAccountDeletion(String uid) async {
     await _userDoc(uid).update({
       'scheduledForDeletion': true,
@@ -237,19 +190,13 @@ class UserService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // CONNECTIVITY CHECK
-  // ─────────────────────────────────────────────
-
-  /// Checks Firestore reachability by attempting a lightweight read.
-  /// Returns true if connected, false otherwise.
-  /// Used in main.dart to gate app startup.
   Future<bool> checkConnection() async {
     try {
       debugPrint('[UserService] Checking Firestore connection...');
-      await _db.collection('usuarios').limit(1).get(
-        const GetOptions(source: Source.server),
-      );
+      await _db
+          .collection('usuarios')
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
       debugPrint('[UserService] ✅ Firestore connection OK');
       return true;
     } catch (e) {
@@ -257,10 +204,6 @@ class UserService {
       return false;
     }
   }
-
-  // ─────────────────────────────────────────────
-  // DELETE USER DOCUMENT (admin only — enforced by rules)
-  // ─────────────────────────────────────────────
 
   Future<void> deleteUserDocument(String uid) async {
     await _userDoc(uid).delete();

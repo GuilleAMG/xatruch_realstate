@@ -1,3 +1,4 @@
+// Servicio de Perfil de Usuario
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
@@ -26,8 +27,8 @@ ProfileStateSnapshot resolveProfileStateSnapshot({
   final resolvedName = (documentName?.trim().isNotEmpty ?? false)
       ? documentName!.trim()
       : (authDisplayName?.trim().isNotEmpty ?? false
-          ? authDisplayName!
-          : (authEmail?.split('@').first ?? 'Usuario'));
+            ? authDisplayName!
+            : (authEmail?.split('@').first ?? 'Usuario'));
 
   final resolvedEmail = authEmail ?? documentEmail ?? '';
   final resolvedPhotoUrl = documentPhotoUrl ?? '';
@@ -41,13 +42,14 @@ ProfileStateSnapshot resolveProfileStateSnapshot({
 
 class ProfileStateService extends ChangeNotifier {
   ProfileStateService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance {
+    : _firestore = firestore ?? FirebaseFirestore.instance {
     _listenToAuthChanges();
   }
 
   final FirebaseFirestore _firestore;
   StreamSubscription<firebase_auth.User?>? _authSubscription;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _userDocSubscription;
   String _displayName = '';
   String _email = '';
   String _photoUrl = '';
@@ -82,33 +84,37 @@ class ProfileStateService extends ChangeNotifier {
     await _userDocSubscription?.cancel();
 
     try {
-      _userDocSubscription = _firestore.collection('usuarios').doc(user.uid).snapshots().listen(
-        (snapshot) {
-          final data = snapshot.data();
-          final resolved = resolveProfileStateSnapshot(
-            documentName: data?['nombre'] as String?,
-            documentEmail: data?['email'] as String?,
-            documentPhotoUrl: data?['photoUrl'] as String?,
-            authDisplayName: user.displayName,
-            authEmail: user.email,
-          );
+      _userDocSubscription = _firestore
+          .collection('usuarios')
+          .doc(user.uid)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              final data = snapshot.data();
+              final resolved = resolveProfileStateSnapshot(
+                documentName: data?['nombre'] as String?,
+                documentEmail: data?['email'] as String?,
+                documentPhotoUrl: data?['photoUrl'] as String?,
+                authDisplayName: user.displayName,
+                authEmail: user.email,
+              );
 
-          _displayName = resolved.displayName;
-          _email = resolved.email;
-          _photoUrl = resolved.photoUrl;
-          _isLoading = false;
-          notifyListeners();
-        },
-        onError: (_) {
-          _displayName = user.displayName?.trim().isNotEmpty == true
-              ? user.displayName!
-              : (user.email?.split('@').first ?? 'Usuario');
-          _email = user.email ?? '';
-          _photoUrl = '';
-          _isLoading = false;
-          notifyListeners();
-        },
-      );
+              _displayName = resolved.displayName;
+              _email = resolved.email;
+              _photoUrl = resolved.photoUrl;
+              _isLoading = false;
+              notifyListeners();
+            },
+            onError: (_) {
+              _displayName = user.displayName?.trim().isNotEmpty == true
+                  ? user.displayName!
+                  : (user.email?.split('@').first ?? 'Usuario');
+              _email = user.email ?? '';
+              _photoUrl = '';
+              _isLoading = false;
+              notifyListeners();
+            },
+          );
     } catch (_) {
       _displayName = user.displayName?.trim().isNotEmpty == true
           ? user.displayName!

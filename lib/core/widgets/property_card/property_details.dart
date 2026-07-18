@@ -1,5 +1,4 @@
-// Detalles de propiedad en tarjeta: muestra título, ubicación, precio,
-// información del vendedor y botón de contacto dentro de la tarjeta.
+// Detalles de tarjeta de propiedad.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/data/properties.dart';
 import 'package:xatruch_realstate/core/services/auth_service.dart';
@@ -186,7 +185,7 @@ class PropertyDetails extends StatelessWidget {
               _buildFeature(
                 context,
                 Icons.king_bed_outlined,
-                '${property.bedrooms} Dormitorios',
+                '${property.bedrooms} Habitaciones',
               ),
               _buildFeature(
                 context,

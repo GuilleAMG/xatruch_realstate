@@ -1,8 +1,6 @@
-// Botón de favorito: permite al usuario marcar o desmarcar una propiedad
-// como favorita con animación de corazón.
+// Botón de favoritos.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/core/services/favorite_service.dart';
-
 class PropertyFavoriteButton extends StatelessWidget {
   const PropertyFavoriteButton({super.key, required this.propertyId});
   final String propertyId;

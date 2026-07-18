@@ -1,5 +1,4 @@
-// Contenedor principal de la app: gestiona la barra de navegación inferior
-// y el cambio entre las pantallas de Inicio, Mensajes y Perfil.
+// Contenedor principal de la app y barra de navegación.
 import 'package:flutter/material.dart';
 import 'package:xatruch_realstate/features/properties/ui/home_screen.dart';
 import 'package:xatruch_realstate/features/chat/ui/chats_screen.dart';

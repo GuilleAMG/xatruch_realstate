@@ -1,19 +1,18 @@
-// Servicio de datos de notificaciones: lectura y escritura de notificaciones
-// en la app mediante Firestore (enviar, listar, marcar como leída).
+// Servicio de datos de las notificaciones
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:xatruch_realstate/features/support/data/notification.dart';
 
-/// Gestiona los datos de notificaciones dentro de la app (lectura/escritura en Firestore).
 class NotificationDataService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Envía una notificación a un usuario específico.
   Future<void> sendNotification(AppNotification notification) async {
     try {
-      debugPrint('[NotificationDataService] Sending notification to ${notification.userId}');
+      debugPrint(
+        '[NotificationDataService] Sending notification to ${notification.userId}',
+      );
       await _db
           .collection('usuarios')
           .doc(notification.userId)
@@ -22,11 +21,11 @@ class NotificationDataService {
       debugPrint('[NotificationDataService] Notification sent successfully');
     } catch (e) {
       debugPrint('[NotificationDataService] ERROR sending notification: $e');
-      rethrow; // Rethrow to let caller handle it
+      rethrow;
     }
   }
 
-  /// Retorna un stream en tiempo real de las notificaciones del usuario actual.
+  /// Retorna una lista de las notificaciones.
   Stream<List<AppNotification>> getNotifications() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -44,7 +43,6 @@ class NotificationDataService {
         );
   }
 
-  /// Marca una notificación específica como leída.
   Future<void> markNotificationAsRead(String notificationId) async {
     final user = _auth.currentUser;
     if (user == null) return;

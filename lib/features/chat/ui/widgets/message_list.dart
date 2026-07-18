@@ -17,9 +17,7 @@ class MessageList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (messages.isEmpty) {
-      return const Center(
-        child: Text('No hay mensajes aún. ¡Di hola!'),
-      );
+      return const Center(child: Text('No hay mensajes aún. ¡Di hola!'));
     }
 
     return ListView.builder(

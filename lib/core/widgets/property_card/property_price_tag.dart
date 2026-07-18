@@ -1,7 +1,5 @@
-// Etiqueta de precio: muestra el precio de la propiedad con formato
-// de moneda local sobre la imagen del carrusel.
+// Etiqueta de precio.
 import 'package:flutter/material.dart';
-
 class PropertyPriceTag extends StatelessWidget {
   const PropertyPriceTag({super.key, required this.price});
   final double price;

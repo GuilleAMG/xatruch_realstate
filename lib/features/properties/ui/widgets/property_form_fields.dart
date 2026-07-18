@@ -121,7 +121,7 @@ class PropertyFormFields extends StatelessWidget {
             filled: true,
             hintText: selectedDepartment != null && selectedDepartment!.isNotEmpty
                 ? 'Selecciona un municipio'
-                : 'Primero elige un departamento',
+                : 'Elige un departamento',
           ),
           menuMaxHeight: 220,
           items: (selectedDepartment != null && selectedDepartment!.isNotEmpty

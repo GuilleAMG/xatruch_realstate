@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Estado vacío para la lista de chats o resultados de búsqueda.
+/// Lista de chats o resultados de búsqueda vacíos.
 class ChatEmptyState extends StatelessWidget {
-  const ChatEmptyState({
-    super.key,
-    required this.isSearch,
-  });
+  const ChatEmptyState({super.key, required this.isSearch});
 
   final bool isSearch;
 

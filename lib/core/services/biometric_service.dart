@@ -1,25 +1,24 @@
-// Servicio de autenticación biométrica: verifica disponibilidad de biometría,
-// autentica al usuario y lista los tipos biométricos disponibles en el dispositivo.
+// Servicio de autenticación biométrica.
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
 class BiometricService {
   final LocalAuthentication auth = LocalAuthentication();
-
   Future<bool> isBiometricAvailable() async {
     final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-    final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+    final bool canAuthenticate =
+        canAuthenticateWithBiometrics || await auth.isDeviceSupported();
     return canAuthenticate;
   }
 
   Future<bool> authenticate() async {
     try {
       final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Autentícate para habilitar el acceso seguro',
+        localizedReason: 'Autentícate para habilitar el acceso seguro.',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: false, // Permite respaldo con PIN/Patrón en emulador
+          biometricOnly: false,
         ),
       );
       return didAuthenticate;
